@@ -22,7 +22,7 @@
 | ID | 任务 | 状态 | 所有者 | 优先级 | 依赖 | 备注 |
 |----|------|------|--------|--------|------|------|
 | T-001 | 搭建协作基础设施（AGENTS/CONVENTIONS/TASKS/README） | done | TRAE | 高 | — | 已完成 |
-| T-002 | 初始化 Git 仓库并提交初始文件 | blocked | TRAE | 高 | T-001 | 本机未安装 Git，需先安装（见备注） |
+| T-002 | 初始化 Git 仓库并提交初始文件 | done | TRAE | 高 | T-001 | 已完成；Git 路径 `E:\Git\bin\git.exe` |
 | T-003 | 制定 LLOS 完整第一代产品工程书 | todo | Human+TRAE | 高 | — | 待启动 |
 | T-004 | 定义 DLC 市场分类与发现机制 | todo | WorkBuddy | 中 | T-003 | 借鉴 Steam Workshop |
 | T-005 | 设计账户体系（多用户类型：教师/学生/自由学习者） | todo | TRAE | 中 | T-003 | 借鉴 Steam 账户 |
