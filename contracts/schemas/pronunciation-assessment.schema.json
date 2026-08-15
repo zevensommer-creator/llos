@@ -1,0 +1,1356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:pronunciation-assessment:0.2.0",
+  "title": "Pronunciation Assessment",
+  "description": "Evidence-bearing pronunciation report with explicit audio quality, alignment, language calibration, uncertainty and abstention. v0.2.0: evidence values use TypedValue instead of arbitrary JSON; extensions use ExtensionEnvelope (spec §4.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "assessment_id",
+    "session_id",
+    "activity_id",
+    "created_at",
+    "language",
+    "mode",
+    "status",
+    "audio_ref",
+    "audio_quality",
+    "reference",
+    "recognition",
+    "alignment",
+    "dimensions",
+    "words",
+    "evidence",
+    "issues",
+    "abstentions",
+    "calibration",
+    "component_versions",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "assessment_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "session_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "activity_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "language": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "mode": {
+      "enum": [
+        "read_aloud",
+        "shadowing",
+        "constrained_response",
+        "open_speech"
+      ]
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "partial",
+        "abstained",
+        "failed"
+      ]
+    },
+    "audio_ref": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "audio_quality": {
+      "$ref": "#/$defs/AudioQuality"
+    },
+    "reference": {
+      "$ref": "#/$defs/Reference"
+    },
+    "recognition": {
+      "$ref": "#/$defs/Recognition"
+    },
+    "alignment": {
+      "$ref": "#/$defs/Alignment"
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Dimension"
+      }
+    },
+    "words": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/WordAssessment"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Issue"
+      }
+    },
+    "abstentions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Abstention"
+      }
+    },
+    "calibration": {
+      "$ref": "#/$defs/Calibration"
+    },
+    "component_versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/ComponentVersion"
+      }
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      }
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "abstained"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "abstentions": {
+            "minItems": 1
+          },
+          "issues": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "diagnostics"
+        ],
+        "properties": {
+          "diagnostics": {
+            "minItems": 1
+          },
+          "issues": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "TypedValue": {
+      "description": "Discriminated union for evidence values. Arbitrary JSON is forbidden (spec §4.4).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "string"
+          ],
+          "properties": {
+            "kind": {
+              "const": "string"
+            },
+            "string": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "number"
+          ],
+          "properties": {
+            "kind": {
+              "const": "number"
+            },
+            "number": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "boolean"
+          ],
+          "properties": {
+            "kind": {
+              "const": "boolean"
+            },
+            "boolean": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "artifact_ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "artifact_ref"
+            },
+            "artifact_ref": {
+              "$ref": "#/$defs/ArtifactRef"
+            }
+          }
+        }
+      ]
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_ms",
+        "end_ms"
+      ],
+      "properties": {
+        "start_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "AudioQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "speech_duration_ms",
+        "snr_db",
+        "clipping_ratio",
+        "silence_ratio",
+        "channel_count",
+        "sample_rate_hz"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "degraded",
+            "rejected"
+          ]
+        },
+        "speech_duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snr_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "clipping_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "silence_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "channel_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 8000
+        },
+        "quality_flags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "too_short",
+              "too_long",
+              "low_snr",
+              "clipping",
+              "multiple_speakers",
+              "music",
+              "unsupported_format",
+              "vad_uncertain"
+            ]
+          }
+        }
+      }
+    },
+    "Reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_type",
+        "text",
+        "pronunciation_graph_ref",
+        "language_profile_ref",
+        "acceptable_variant_policy_version"
+      ],
+      "properties": {
+        "reference_type": {
+          "enum": [
+            "exact_text",
+            "answer_graph",
+            "resolved_transcript"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "normalized_text": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "pronunciation_graph_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "language_profile_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "acceptable_variant_policy_version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "Recognition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "hypotheses"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "partial",
+            "failed",
+            "not_run"
+          ]
+        },
+        "hypotheses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "text",
+              "rank",
+              "confidence"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 20000
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "content_match": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "insertions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deletions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "substitutions": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "Alignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "coverage",
+        "mean_confidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "completed",
+            "partial",
+            "failed",
+            "not_applicable"
+          ]
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mean_confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "failure_code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,127}$"
+        }
+      }
+    },
+    "Dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "phoneme_accuracy",
+            "vowel_quantity",
+            "vowel_quality",
+            "word_stress",
+            "prosody",
+            "fluency",
+            "completeness",
+            "intelligibility"
+          ]
+        },
+        "status": {
+          "enum": [
+            "scored",
+            "abstained",
+            "not_applicable"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "abstention_ref": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "scored"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "score"
+            ],
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "abstained"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "abstention_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "WordAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "word_id",
+        "text",
+        "interval",
+        "alignment_confidence",
+        "phones",
+        "issue_refs"
+      ],
+      "properties": {
+        "word_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "interval": {
+          "$ref": "#/$defs/Interval"
+        },
+        "alignment_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "phones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhoneAssessment"
+          }
+        },
+        "stress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "expected_syllable": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "observed_syllable": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "issue_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "PhoneAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phone_id",
+        "expected",
+        "interval",
+        "status",
+        "confidence",
+        "evidence_refs"
+      ],
+      "properties": {
+        "phone_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "expected": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "observed_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "phone",
+              "confidence"
+            ],
+            "properties": {
+              "phone": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "interval": {
+          "$ref": "#/$defs/Interval"
+        },
+        "status": {
+          "enum": [
+            "acceptable",
+            "issue",
+            "uncertain",
+            "not_aligned"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "issue_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "value",
+        "confidence",
+        "source_component_ref"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "enum": [
+            "audio_quality",
+            "asr_hypothesis",
+            "alignment",
+            "gop",
+            "ctc_posterior",
+            "duration",
+            "formant",
+            "f0",
+            "intensity",
+            "pause",
+            "language_rule",
+            "human_annotation"
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/TypedValue"
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "interval": {
+          "$ref": "#/$defs/Interval"
+        },
+        "target_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "source_component_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    "Issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issue_id",
+        "category",
+        "status",
+        "severity",
+        "target",
+        "location",
+        "confidence",
+        "evidence_refs",
+        "feedback_key"
+      ],
+      "properties": {
+        "issue_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "category": {
+          "enum": [
+            "phoneme_substitution",
+            "phoneme_deletion",
+            "phoneme_insertion",
+            "vowel_quantity",
+            "vowel_quality",
+            "front_rounded_vowel",
+            "ich_ach_laut",
+            "final_devoicing",
+            "stop_aspiration",
+            "word_stress",
+            "completeness",
+            "fluency",
+            "prosody",
+            "other"
+          ]
+        },
+        "status": {
+          "enum": [
+            "confirmed",
+            "suspected"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "observed": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "location": {
+          "$ref": "#/$defs/Interval"
+        },
+        "word_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "phone_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "feedback_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "pedagogical_priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "Abstention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "abstention_id",
+        "scope",
+        "reason_code",
+        "message"
+      ],
+      "properties": {
+        "abstention_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "scope": {
+          "enum": [
+            "assessment",
+            "dimension",
+            "word",
+            "phone",
+            "issue"
+          ]
+        },
+        "target_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "reason_code": {
+          "enum": [
+            "audio_quality",
+            "insufficient_speech",
+            "asr_disagreement",
+            "alignment_failed",
+            "alignment_low_confidence",
+            "acceptable_variant_ambiguous",
+            "out_of_calibration_domain",
+            "evidence_conflict",
+            "unsupported_language_feature",
+            "provider_failure"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "Calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language_profile_id",
+        "language_profile_version",
+        "calibrator_id",
+        "calibrator_version",
+        "threshold_set_version",
+        "domain_status"
+      ],
+      "properties": {
+        "language_profile_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "language_profile_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "calibrator_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "calibrator_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "threshold_set_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "domain_status": {
+          "enum": [
+            "in_domain",
+            "partially_in_domain",
+            "out_of_domain",
+            "unknown"
+          ]
+        },
+        "learner_l1_group": {
+          "$ref": "#/$defs/LanguageTag"
+        },
+        "device_class": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "validation_report_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    "ComponentVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_ref",
+        "role",
+        "provider_id",
+        "model_id",
+        "model_version"
+      ],
+      "properties": {
+        "component_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "role": {
+          "enum": [
+            "vad",
+            "asr",
+            "g2p",
+            "alignment",
+            "gop",
+            "ctc",
+            "prosody",
+            "calibration",
+            "feedback"
+          ]
+        },
+        "provider_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pipeline_version",
+        "input_sha256",
+        "random_seed",
+        "started_at",
+        "finished_at",
+        "usage"
+      ],
+      "properties": {
+        "pipeline_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "input_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "random_seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "latency_ms",
+            "cpu_seconds",
+            "gpu_seconds",
+            "cost_usd"
+          ],
+          "properties": {
+            "latency_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cpu_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "gpu_seconds": {
+              "type": "number",
+              "minimum": 0
+            },
+            "cost_usd": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "Diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,127}$"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.2.0",
+      "assessment_id": "assessment.de.0001",
+      "session_id": "session.0001",
+      "activity_id": "activity.read-aloud.0001",
+      "created_at": "2026-08-14T12:00:10Z",
+      "language": "de-DE",
+      "mode": "read_aloud",
+      "status": "partial",
+      "audio_ref": {
+        "uri": "artifact://audio/session.0001/utterance.0001.wav",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "media_type": "audio/wav",
+        "duration_ms": 2800
+      },
+      "audio_quality": {
+        "status": "passed",
+        "speech_duration_ms": 2400,
+        "snr_db": 24.5,
+        "clipping_ratio": 0,
+        "silence_ratio": 0.14,
+        "channel_count": 1,
+        "sample_rate_hz": 16000,
+        "quality_flags": []
+      },
+      "reference": {
+        "reference_type": "exact_text",
+        "text": "Wir bieten Ihnen diesen Termin an.",
+        "normalized_text": "wir bieten ihnen diesen termin an",
+        "pronunciation_graph_ref": {
+          "uri": "artifact://pronunciation-graphs/de/utterance.0001",
+          "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "media_type": "application/json"
+        },
+        "language_profile_ref": "artifact://language-profiles/de-DE/0.1.0",
+        "acceptable_variant_policy_version": "0.1.0"
+      },
+      "recognition": {
+        "status": "completed",
+        "hypotheses": [
+          {
+            "text": "Wir bieten Ihnen diesen Termin an.",
+            "rank": 1,
+            "confidence": 0.94
+          }
+        ],
+        "content_match": {
+          "completeness": 1,
+          "insertions": 0,
+          "deletions": 0,
+          "substitutions": 0
+        }
+      },
+      "alignment": {
+        "status": "completed",
+        "coverage": 1,
+        "mean_confidence": 0.88
+      },
+      "dimensions": [
+        {
+          "id": "vowel_quantity",
+          "status": "scored",
+          "score": 74,
+          "confidence": 0.86,
+          "evidence_refs": [
+            "ev.duration.bieten.i"
+          ]
+        },
+        {
+          "id": "word_stress",
+          "status": "abstained",
+          "confidence": 0.42,
+          "evidence_refs": [],
+          "abstention_ref": "abs.stress.low-confidence"
+        }
+      ],
+      "words": [],
+      "evidence": [
+        {
+          "evidence_id": "ev.duration.bieten.i",
+          "kind": "duration",
+          "value": {
+            "kind": "number",
+            "number": 71
+          },
+          "unit": "ms",
+          "confidence": 0.91,
+          "interval": {
+            "start_ms": 420,
+            "end_ms": 491
+          },
+          "target_ref": "phone.bieten.i-long",
+          "source_component_ref": "component.praat.duration"
+        }
+      ],
+      "issues": [
+        {
+          "issue_id": "issue.vowel-quantity.0001",
+          "category": "vowel_quantity",
+          "status": "confirmed",
+          "severity": "medium",
+          "target": "iː",
+          "observed": "duration and quality closer to short-vowel reference",
+          "location": {
+            "start_ms": 420,
+            "end_ms": 491
+          },
+          "confidence": 0.86,
+          "evidence_refs": [
+            "ev.duration.bieten.i"
+          ],
+          "feedback_key": "de.vowel_quantity.lengthen_and_hold_quality",
+          "pedagogical_priority": 80
+        }
+      ],
+      "abstentions": [
+        {
+          "abstention_id": "abs.stress.low-confidence",
+          "scope": "dimension",
+          "target_ref": "word_stress",
+          "reason_code": "evidence_conflict",
+          "message": "F0, intensity and duration evidence do not agree strongly enough to diagnose word stress."
+        }
+      ],
+      "calibration": {
+        "language_profile_id": "language-profile.de-DE",
+        "language_profile_version": "0.1.0",
+        "calibrator_id": "calibrator.de.read-aloud",
+        "calibrator_version": "0.1.0",
+        "threshold_set_version": "0.1.0",
+        "domain_status": "in_domain",
+        "learner_l1_group": "zh-CN",
+        "device_class": "consumer-headset"
+      },
+      "component_versions": [
+        {
+          "component_ref": "component.mfa.german",
+          "role": "alignment",
+          "provider_id": "provider.mfa.local",
+          "model_id": "german-mfa-acoustic",
+          "model_version": "3.0.0"
+        },
+        {
+          "component_ref": "component.praat.duration",
+          "role": "prosody",
+          "provider_id": "provider.parselmouth.local",
+          "model_id": "praat-feature-rules",
+          "model_version": "0.1.0"
+        }
+      ],
+      "provenance": {
+        "pipeline_version": "0.1.0",
+        "input_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "random_seed": 42,
+        "started_at": "2026-08-14T12:00:07Z",
+        "finished_at": "2026-08-14T12:00:10Z",
+        "usage": {
+          "latency_ms": 3000,
+          "cpu_seconds": 4.2,
+          "gpu_seconds": 0,
+          "cost_usd": 0
+        }
+      }
+    }
+  ]
+}

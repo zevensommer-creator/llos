@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:session-composition:0.2.1",
+  "title": "Session Composition",
+  "description": "Discriminated union of chat and learning session compositions. mode=chat requires dlc_ref=null and never produces learning state; mode=learning requires the full three-layer readiness composition (spec §2.6). v0.2.1: the readiness gate is schema-enforced—all six flags must be true for a valid LearningSession; a not-ready composition must be rejected at creation as a typed error, never serialized as a validated instance (ADR-013).",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ChatSession"
+    },
+    {
+      "$ref": "#/$defs/LearningSession"
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "VersionedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "origin": {
+          "enum": [
+            "stored",
+            "uploaded",
+            "generated_random",
+            "generated_instructed",
+            "derived"
+          ]
+        }
+      }
+    },
+    "PolicyRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:policy/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    },
+    "ChatSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "session_id",
+        "mode",
+        "dlc_ref",
+        "learner_ref",
+        "created_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.2.1"
+        },
+        "session_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "mode": {
+          "const": "chat"
+        },
+        "dlc_ref": {
+          "type": "null"
+        },
+        "learner_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "context_material_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VersionedRef"
+          }
+        },
+        "extensions": {
+          "$ref": "#/$defs/Extensions"
+        }
+      }
+    },
+    "Readiness": {
+      "type": "object",
+      "description": "Three-layer readiness gate, schema-enforced since v0.2.1 (ADR-013): every flag is const true, so an instance that passes validation necessarily passed all six gates. Not-ready states are represented by typed session-creation rejections, never by a validated LearningSession carrying false flags.",
+      "additionalProperties": false,
+      "required": [
+        "core_ready",
+        "active_dlc_valid",
+        "material_snapshot_valid",
+        "compiled_ir_valid",
+        "entitlement_valid",
+        "provider_capabilities_ok_or_explicit_fallback"
+      ],
+      "properties": {
+        "core_ready": {
+          "type": "boolean",
+          "const": true
+        },
+        "active_dlc_valid": {
+          "type": "boolean",
+          "const": true
+        },
+        "material_snapshot_valid": {
+          "type": "boolean",
+          "const": true
+        },
+        "compiled_ir_valid": {
+          "type": "boolean",
+          "const": true
+        },
+        "entitlement_valid": {
+          "type": "boolean",
+          "const": true
+        },
+        "provider_capabilities_ok_or_explicit_fallback": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "LearningSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "session_id",
+        "mode",
+        "learner_ref",
+        "created_at",
+        "dlc_ref",
+        "material_snapshot_ref",
+        "learning_ir_ref",
+        "evidence_policy_ref",
+        "evidence_policy_version",
+        "entitlement_ref",
+        "core_version",
+        "readiness"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.2.1"
+        },
+        "session_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "mode": {
+          "const": "learning"
+        },
+        "learner_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dlc_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        },
+        "material_snapshot_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        },
+        "learning_ir_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        },
+        "evidence_policy_ref": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "evidence_policy_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "entitlement_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "core_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "readiness": {
+          "$ref": "#/$defs/Readiness"
+        },
+        "extensions": {
+          "$ref": "#/$defs/Extensions"
+        }
+      }
+    }
+  }
+}

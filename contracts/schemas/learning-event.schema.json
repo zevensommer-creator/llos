@@ -1,0 +1,643 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:learning-event:0.2.0",
+  "title": "Learning Event",
+  "description": "Append-only learning event. event_type must come from the Core event registry; mode is always learning (chat never enters the learning reducer); idempotency_key dedupes retries (spec §2.5, §5.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "sequence_no",
+    "occurred_at",
+    "learner_ref",
+    "session_ref",
+    "mode",
+    "composition",
+    "idempotency_key"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "event_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "event_type": {
+      "enum": [
+        "learning.session_started",
+        "learning.session_completed",
+        "learning.session_aborted",
+        "activity.presented",
+        "learner.response_submitted",
+        "observation.recorded",
+        "learning.evidence_recorded",
+        "mastery.decision_made",
+        "review.scheduled",
+        "feedback.presented",
+        "learner.correction_accepted",
+        "composition.upgraded",
+        "correction.manual_applied",
+        "projection.replay_completed"
+      ],
+      "description": "Closed registry; see docs/contracts/learning-event-registry.json. Unregistered types are rejected."
+    },
+    "sequence_no": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "learner_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "session_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "mode": {
+      "const": "learning"
+    },
+    "composition": {
+      "$ref": "#/$defs/Composition"
+    },
+    "claim_ref": {
+      "$ref": "#/$defs/ClaimRef"
+    },
+    "evidence_policy_ref": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "task": {
+      "$ref": "#/$defs/TaskContext"
+    },
+    "observation": {
+      "$ref": "#/$defs/ObservationPayload"
+    },
+    "decision": {
+      "$ref": "#/$defs/DecisionPayload"
+    },
+    "review": {
+      "$ref": "#/$defs/ReviewPayload"
+    },
+    "abort_reason": {
+      "enum": [
+        "material_unavailable",
+        "provider_unavailable",
+        "budget_exhausted",
+        "timeout",
+        "dlc_compile_failed",
+        "hard_stop",
+        "learner_exit",
+        "entitlement_lost"
+      ]
+    },
+    "payload_ref": {
+      "$ref": "#/$defs/ArtifactRef",
+      "description": "Event-specific large payloads as schema-validated artifacts, never inline arbitrary JSON."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "observation.recorded",
+              "learning.evidence_recorded"
+            ]
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "claim_ref",
+          "evidence_policy_ref",
+          "task",
+          "observation"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "mastery.decision_made"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "claim_ref",
+          "evidence_policy_ref",
+          "decision"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "review.scheduled"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "claim_ref",
+          "review"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "learning.session_aborted"
+          }
+        },
+        "required": [
+          "event_type"
+        ]
+      },
+      "then": {
+        "required": [
+          "abort_reason"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "PolicyRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:policy/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "MetricRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:metric/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Duration": {
+      "type": "string",
+      "pattern": "^P(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?:[0-9]+H)?(?:[0-9]+M)?(?:[0-9]+S)?)?$",
+      "minLength": 2
+    },
+    "VersionedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "origin": {
+          "enum": [
+            "stored",
+            "uploaded",
+            "generated_random",
+            "generated_instructed",
+            "derived"
+          ]
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "Composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core_version",
+        "dlc_ref",
+        "material_snapshot_ref",
+        "learning_ir_ref"
+      ],
+      "properties": {
+        "core_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "dlc_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        },
+        "material_snapshot_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        },
+        "learning_ir_ref": {
+          "$ref": "#/$defs/VersionedRef"
+        }
+      }
+    },
+    "TaskContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_ref",
+        "response_mode",
+        "assistance"
+      ],
+      "properties": {
+        "task_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "context_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "response_mode": {
+          "enum": [
+            "text",
+            "audio",
+            "choice",
+            "mixed"
+          ]
+        },
+        "assistance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hint_count",
+            "retry_count",
+            "answer_revealed"
+          ],
+          "properties": {
+            "hint_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retry_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "answer_revealed": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "ObservationPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "result_kind",
+        "evidence_group_id",
+        "evaluator"
+      ],
+      "properties": {
+        "observation_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evidence_group_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evaluator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "version": {
+              "$ref": "#/$defs/SemVer"
+            },
+            "kind": {
+              "enum": [
+                "rule",
+                "model",
+                "human"
+              ]
+            }
+          }
+        },
+        "result_kind": {
+          "enum": [
+            "binary",
+            "scalar",
+            "rubric_vector",
+            "timed",
+            "artifact_evidence",
+            "abstention"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "failure"
+          ]
+        },
+        "metric_ref": {
+          "$ref": "#/$defs/MetricRef"
+        },
+        "value": {
+          "type": "number"
+        },
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "dimension_ref",
+              "value"
+            ],
+            "properties": {
+              "dimension_ref": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "value": {
+                "type": "number"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_artifact_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "abstention_reason": {
+          "enum": [
+            "audio_quality_low",
+            "alignment_failed",
+            "reference_mismatch_too_large",
+            "scorer_conflict",
+            "oov_or_g2p_uncertain",
+            "uncalibrated_domain",
+            "evaluator_uncertain",
+            "insufficient_evidence"
+          ]
+        },
+        "measurement_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "result_kind",
+            "outcome",
+            "measurement_confidence"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "binary"
+            }
+          }
+        },
+        {
+          "required": [
+            "result_kind",
+            "metric_ref",
+            "value",
+            "measurement_confidence"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "scalar"
+            }
+          }
+        },
+        {
+          "required": [
+            "result_kind",
+            "metric_ref",
+            "dimensions",
+            "measurement_confidence"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "rubric_vector"
+            }
+          }
+        },
+        {
+          "required": [
+            "result_kind",
+            "metric_ref",
+            "value",
+            "latency_ms",
+            "measurement_confidence"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "timed"
+            }
+          }
+        },
+        {
+          "required": [
+            "result_kind",
+            "evidence_artifact_ref",
+            "measurement_confidence"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "artifact_evidence"
+            }
+          }
+        },
+        {
+          "required": [
+            "result_kind",
+            "abstention_reason"
+          ],
+          "properties": {
+            "result_kind": {
+              "const": "abstention"
+            }
+          }
+        }
+      ]
+    },
+    "DecisionPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason_codes",
+        "policy_version"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_yet",
+            "provisional",
+            "learned",
+            "uncertain",
+            "lapsed"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.]*$"
+          }
+        },
+        "policy_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "valid_until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ReviewPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "due_at",
+        "interval"
+      ],
+      "properties": {
+        "due_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "interval": {
+          "$ref": "#/$defs/Duration"
+        },
+        "scheduler": {
+          "enum": [
+            "rule_based",
+            "fsrs_memory"
+          ]
+        }
+      }
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

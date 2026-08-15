@@ -1,0 +1,14 @@
+{
+  "name": "llos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "LLOS - Language Learning Operating System (monorepo root)",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "contracts:generate": "pnpm --filter @llos/contracts generate"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

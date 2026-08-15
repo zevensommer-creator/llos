@@ -1,0 +1,1455 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:learning-ir:0.2.0",
+  "title": "Learning IR",
+  "description": "Versioned pedagogical or executable intermediate representation exchanged between DLC compilers and Core. v0.2.0 removes all fixed linguistic theory categories and arbitrary-JSON escape hatches: objectives become theory-neutral claim references, executable programs lower to closed runtime primitives, all condition values use TypedValue, extensions use ExtensionEnvelope, and event outputs must reference the Core event registry (spec §4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ir_id",
+    "ir_version",
+    "ir_kind",
+    "language",
+    "created_at",
+    "compiler",
+    "source_refs",
+    "claims",
+    "program",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "ir_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "ir_version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "ir_kind": {
+      "enum": [
+        "pedagogical",
+        "executable_session"
+      ]
+    },
+    "language": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "learner_locale": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "compiler": {
+      "$ref": "#/$defs/CompilerRef"
+    },
+    "source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      },
+      "description": "Includes the MaterialSnapshot artifact reference; DLC never embeds material content."
+    },
+    "learner_projection_ref": {
+      "$ref": "#/$defs/ArtifactRef",
+      "description": "Authorized LearnerStateProjection input provided by Core; compilers never access learner data directly."
+    },
+    "random_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/ClaimBinding"
+      },
+      "description": "Theory-neutral claim bindings. claim_ref is opaque to Core; descriptors are display artifacts, not Core enums (spec §4.2)."
+    },
+    "program": {},
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ir_kind": {
+            "const": "pedagogical"
+          }
+        },
+        "required": [
+          "ir_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "program": {
+            "$ref": "#/$defs/PedagogicalProgram"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ir_kind": {
+            "const": "executable_session"
+          }
+        },
+        "required": [
+          "ir_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "program": {
+            "$ref": "#/$defs/ExecutableSession"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "PolicyRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:policy/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "MetricRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:metric/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "Duration": {
+      "type": "string",
+      "pattern": "^P(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?:[0-9]+H)?(?:[0-9]+M)?(?:[0-9]+S)?)?$",
+      "minLength": 2
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extensions only via registered ExtensionEnvelope; unregistered extensions or hash mismatches are rejected (spec §4.4)."
+    },
+    "TypedValue": {
+      "description": "Discriminated union for all value positions. Arbitrary JSON values are forbidden (spec §4.4).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "string"
+          ],
+          "properties": {
+            "kind": {
+              "const": "string"
+            },
+            "string": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "int"
+          ],
+          "properties": {
+            "kind": {
+              "const": "int"
+            },
+            "int": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "float"
+          ],
+          "properties": {
+            "kind": {
+              "const": "float"
+            },
+            "float": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "bool"
+          ],
+          "properties": {
+            "kind": {
+              "const": "bool"
+            },
+            "bool": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "duration"
+          ],
+          "properties": {
+            "kind": {
+              "const": "duration"
+            },
+            "duration": {
+              "$ref": "#/$defs/Duration"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "interval"
+          ],
+          "properties": {
+            "kind": {
+              "const": "interval"
+            },
+            "interval": {
+              "$ref": "#/$defs/Duration"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "ref"
+            },
+            "ref": {
+              "$ref": "#/$defs/Identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "typed_list"
+          ],
+          "properties": {
+            "kind": {
+              "const": "typed_list"
+            },
+            "typed_list": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/TypedValue"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "typed_map"
+          ],
+          "properties": {
+            "kind": {
+              "const": "typed_map"
+            },
+            "typed_map": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/TypedValue"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "CompilerRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dlc_id",
+        "dlc_version",
+        "runtime_version"
+      ],
+      "properties": {
+        "dlc_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "dlc_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "runtime_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "build_sha256": {
+          "$ref": "#/$defs/Sha256"
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_hashes",
+        "passes"
+      ],
+      "properties": {
+        "input_hashes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Sha256"
+          }
+        },
+        "passes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "version",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "version": {
+                "$ref": "#/$defs/SemVer"
+              },
+              "status": {
+                "enum": [
+                  "completed",
+                  "skipped",
+                  "degraded"
+                ]
+              },
+              "provider_trace_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/Identifier"
+                }
+              }
+            }
+          }
+        },
+        "compiled_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ClaimBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_ref",
+        "evidence_policy_ref",
+        "evidence_policy_version"
+      ],
+      "properties": {
+        "claim_ref": {
+          "$ref": "#/$defs/ClaimRef"
+        },
+        "claim_schema_ref": {
+          "$ref": "#/$defs/Identifier",
+          "description": "Optional versioned schema identifying the claim descriptor vocabulary; registered and validated by Core, never interpreted."
+        },
+        "evidence_policy_ref": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "evidence_policy_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "display_name"
+          ],
+          "properties": {
+            "display_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "level_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "scale_ref",
+                  "level_ref",
+                  "version"
+                ],
+                "properties": {
+                  "scale_ref": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "level_ref": {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  "version": {
+                    "$ref": "#/$defs/SemVer"
+                  }
+                }
+              },
+              "description": "Optional versioned level references (e.g. a CEFR scale). Core does not assume any particular scale exists (spec §4.2)."
+            }
+          },
+          "description": "Display artifact for UI only; not a Core enum and never an execution basis."
+        }
+      }
+    },
+    "PedagogicalProgram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "theory_profile",
+        "claim_refs",
+        "prerequisites",
+        "activity_plan",
+        "assessment_plan",
+        "remediation"
+      ],
+      "properties": {
+        "theory_profile": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier",
+                "description": "DLC-declared theory identifier; Core never interprets it."
+              },
+              "role": {
+                "enum": [
+                  "primary",
+                  "supporting",
+                  "constraint"
+                ]
+              },
+              "version": {
+                "type": "string",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        "claim_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          },
+          "description": "Teaching targets as theory-neutral claim references. v0.1 fixed target categories (constructions/valency_frames/lexical_units/morphology/phonology/pragmatics) are abolished (spec §4.2)."
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_ref",
+              "required_decision"
+            ],
+            "properties": {
+              "claim_ref": {
+                "$ref": "#/$defs/ClaimRef"
+              },
+              "required_decision": {
+                "enum": [
+                  "provisional",
+                  "learned"
+                ],
+                "description": "Required MasteryDecision status under the referenced policy, not a numeric mastery score."
+              },
+              "evidence_policy_version": {
+                "$ref": "#/$defs/SemVer"
+              }
+            }
+          }
+        },
+        "activity_plan": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stage_id",
+              "mode_ref",
+              "claim_refs"
+            ],
+            "properties": {
+              "stage_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "mode_ref": {
+                "$ref": "#/$defs/Identifier",
+                "description": "DLC-layer high-level training mode (shadowing, translation, construction drill, role dialogue, ...). A DLC concept only; it must be lowered to closed runtime primitives in the executable IR and is never an execution basis for Core (spec §4.3)."
+              },
+              "claim_refs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/ClaimRef"
+                }
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "time_budget_ms": {
+                "type": "integer",
+                "minimum": 1000
+              }
+            }
+          }
+        },
+        "assessment_plan": {
+          "$ref": "#/$defs/AssessmentPlan"
+        },
+        "remediation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trigger",
+              "action"
+            ],
+            "properties": {
+              "trigger": {
+                "$ref": "#/$defs/Condition"
+              },
+              "action": {
+                "enum": [
+                  "repeat",
+                  "simplify",
+                  "model",
+                  "contrast",
+                  "explain",
+                  "defer",
+                  "stop"
+                ]
+              },
+              "target_stage_id": {
+                "$ref": "#/$defs/Identifier"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ExecutableSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_policy",
+        "entry_step_id",
+        "steps",
+        "stop_conditions"
+      ],
+      "properties": {
+        "session_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_duration_ms",
+            "max_provider_cost_usd",
+            "max_iterations",
+            "on_provider_failure"
+          ],
+          "properties": {
+            "max_duration_ms": {
+              "type": "integer",
+              "minimum": 1000
+            },
+            "max_provider_cost_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max_iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Hard loop cap enforced by Core; DLC cannot create unbounded remediation loops (spec §2.8)."
+            },
+            "on_provider_failure": {
+              "enum": [
+                "retry",
+                "fallback",
+                "skip_activity",
+                "stop_session"
+              ]
+            },
+            "offline_allowed": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "entry_step_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/PrimitiveStep"
+          },
+          "description": "Closed runtime primitives. Unknown primitives are rejected by Core with a version-upgrade hint (spec §4.3)."
+        },
+        "stop_conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Condition"
+          }
+        }
+      }
+    },
+    "Primitive": {
+      "enum": [
+        "present",
+        "capture_text",
+        "capture_audio",
+        "capture_choice",
+        "invoke_capability",
+        "evaluate",
+        "branch",
+        "feedback",
+        "emit_observation",
+        "schedule",
+        "checkpoint",
+        "stop"
+      ]
+    },
+    "PrimitiveStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "primitive"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "primitive": {
+          "$ref": "#/$defs/Primitive"
+        },
+        "display_mode_ref": {
+          "$ref": "#/$defs/Identifier",
+          "description": "DLC-layer high-level training mode name; display metadata only, never an execution basis (spec §4.3)."
+        },
+        "claim_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          }
+        },
+        "present": {
+          "$ref": "#/$defs/PresentParams"
+        },
+        "capture": {
+          "$ref": "#/$defs/CaptureParams"
+        },
+        "capability": {
+          "$ref": "#/$defs/CapabilityParams"
+        },
+        "evaluate": {
+          "$ref": "#/$defs/EvaluateParams"
+        },
+        "branch": {
+          "$ref": "#/$defs/BranchParams"
+        },
+        "feedback": {
+          "$ref": "#/$defs/FeedbackParams"
+        },
+        "schedule": {
+          "$ref": "#/$defs/ScheduleParams"
+        },
+        "stop": {
+          "$ref": "#/$defs/StopParams"
+        },
+        "next": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "enum": [
+                "$complete",
+                "$stop"
+              ]
+            }
+          ],
+          "description": "Linear default transition; branch primitive handles conditional transitions."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "present"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "present"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "enum": [
+                  "capture_text",
+                  "capture_audio",
+                  "capture_choice"
+                ]
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "capture"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "invoke_capability"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "capability"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "enum": [
+                  "evaluate",
+                  "emit_observation"
+                ]
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "evaluate",
+              "claim_refs"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "branch"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "branch"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "feedback"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "feedback"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "schedule"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "schedule",
+              "claim_refs"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "primitive": {
+                "const": "stop"
+              }
+            },
+            "required": [
+              "primitive"
+            ]
+          },
+          "then": {
+            "required": [
+              "stop"
+            ]
+          }
+        }
+      ]
+    },
+    "PresentParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt"
+      ],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "asset_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          }
+        },
+        "reference_text": {
+          "type": "string",
+          "maxLength": 10000
+        }
+      }
+    },
+    "CaptureParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "timeout_ms"
+      ],
+      "properties": {
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "max_recording_ms": {
+          "type": "integer",
+          "minimum": 500,
+          "description": "capture_audio only."
+        },
+        "max_length": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "capture_text only."
+        },
+        "choices_ref": {
+          "$ref": "#/$defs/ArtifactRef",
+          "description": "capture_choice only: schema-validated choice set artifact."
+        },
+        "allowed_answer_graph_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    "CapabilityParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "required"
+      ],
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/Identifier",
+          "description": "Capability identifier only (e.g. grammar.feedback). Model brands are forbidden in business code (spec P-004, gateway rules)."
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "quality_floor": {
+          "enum": [
+            "economy",
+            "standard",
+            "premium"
+          ]
+        },
+        "max_calls": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "on_failure": {
+          "enum": [
+            "retry",
+            "fallback",
+            "skip",
+            "stop_session"
+          ]
+        }
+      }
+    },
+    "EvaluateParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluator"
+      ],
+      "properties": {
+        "evaluator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "kind"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "version": {
+              "$ref": "#/$defs/SemVer"
+            },
+            "kind": {
+              "enum": [
+                "rule",
+                "model",
+                "human"
+              ]
+            }
+          }
+        },
+        "metric_ref": {
+          "$ref": "#/$defs/MetricRef"
+        },
+        "minimum_measurement_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Evaluator reliability gate. This is NOT a performance threshold; the two gates must never be merged (spec §4.4)."
+        }
+      }
+    },
+    "BranchParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cases",
+        "fallback_target"
+      ],
+      "properties": {
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "when",
+              "target"
+            ],
+            "properties": {
+              "when": {
+                "$ref": "#/$defs/Condition"
+              },
+              "target": {
+                "$ref": "#/$defs/Identifier"
+              }
+            }
+          }
+        },
+        "fallback_target": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "FeedbackParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "template_ref"
+      ],
+      "properties": {
+        "template_ref": {
+          "$ref": "#/$defs/ArtifactRef",
+          "description": "Schema-validated structured feedback template. Raw pronunciation scores are never exposed directly."
+        }
+      }
+    },
+    "ScheduleParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheduler"
+      ],
+      "properties": {
+        "scheduler": {
+          "enum": [
+            "rule_based",
+            "fsrs_memory"
+          ],
+          "description": "fsrs_memory may only schedule reviews; it never alone declares learned (spec §5.7)."
+        },
+        "interval": {
+          "$ref": "#/$defs/Duration"
+        }
+      }
+    },
+    "StopParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "success",
+            "aborted"
+          ]
+        },
+        "abort_reason": {
+          "enum": [
+            "material_unavailable",
+            "provider_unavailable",
+            "budget_exhausted",
+            "timeout",
+            "dlc_compile_failed",
+            "hard_stop",
+            "learner_exit",
+            "entitlement_lost"
+          ]
+        }
+      }
+    },
+    "AssessmentPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimensions",
+        "abstention_allowed"
+      ],
+      "properties": {
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "weight",
+              "evidence_required"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "evidence_required": {
+                "type": "boolean"
+              },
+              "minimum_measurement_confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Evaluator reliability gate, never a performance threshold (spec §4.4)."
+              }
+            }
+          }
+        },
+        "abstention_allowed": {
+          "const": true
+        },
+        "rubric_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    "Condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact",
+        "operator",
+        "value"
+      ],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]+$"
+        },
+        "operator": {
+          "enum": [
+            "eq",
+            "neq",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "exists"
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/TypedValue",
+          "description": "TypedValue discriminated union; arbitrary JSON values are forbidden (spec §4.4)."
+        }
+      }
+    },
+    "EventOutput": {
+      "enum": [
+        "learning.session_started",
+        "learning.session_completed",
+        "learning.session_aborted",
+        "activity.presented",
+        "learner.response_submitted",
+        "observation.recorded",
+        "learning.evidence_recorded",
+        "mastery.decision_made",
+        "review.scheduled",
+        "feedback.presented",
+        "learner.correction_accepted",
+        "composition.upgraded",
+        "correction.manual_applied",
+        "projection.replay_completed"
+      ],
+      "description": "Must reference the Core event registry (docs/contracts/learning-event-registry.json). DLC-invented event names are rejected (spec §4.4)."
+    },
+    "IdList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.2.0",
+      "ir_id": "session.de.vowel-length.001",
+      "ir_version": "0.2.0",
+      "ir_kind": "executable_session",
+      "language": "de-DE",
+      "created_at": "2026-08-15T12:00:00Z",
+      "compiler": {
+        "dlc_id": "dlc.de.fsi-construction",
+        "dlc_version": "0.2.0",
+        "runtime_version": "0.2.0"
+      },
+      "source_refs": [
+        {
+          "uri": "artifact://materials/de-minimal-pairs/snapshot/1",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "media_type": "application/json",
+          "schema_id": "material-pack",
+          "schema_version": "0.2.0"
+        }
+      ],
+      "random_seed": 42,
+      "claims": [
+        {
+          "claim_ref": "dlc.de.fsi-construction:claim/vowel_quantity",
+          "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+          "evidence_policy_version": "0.1.0",
+          "descriptor": {
+            "display_name": "Long/short vowel contrast in read-aloud speech"
+          }
+        }
+      ],
+      "program": {
+        "session_policy": {
+          "max_duration_ms": 900000,
+          "max_provider_cost_usd": 0,
+          "max_iterations": 40,
+          "on_provider_failure": "fallback",
+          "offline_allowed": true
+        },
+        "entry_step_id": "s1",
+        "steps": [
+          {
+            "step_id": "s1",
+            "primitive": "present",
+            "display_mode_ref": "dlc.de.fsi-construction:mode/read_aloud",
+            "present": {
+              "prompt": "Bitte lies den Satz laut vor.",
+              "reference_text": "Wir bieten Ihnen diesen Termin an."
+            },
+            "next": "s2"
+          },
+          {
+            "step_id": "s2",
+            "primitive": "capture_audio",
+            "capture": {
+              "timeout_ms": 30000,
+              "max_recording_ms": 15000
+            },
+            "next": "s3"
+          },
+          {
+            "step_id": "s3",
+            "primitive": "evaluate",
+            "claim_refs": [
+              "dlc.de.fsi-construction:claim/vowel_quantity"
+            ],
+            "evaluate": {
+              "evaluator": {
+                "id": "speech.gop-german",
+                "version": "0.2.0",
+                "kind": "rule"
+              },
+              "metric_ref": "dlc.de.fsi-construction:metric/vowel_quantity_accuracy",
+              "minimum_measurement_confidence": 0.8
+            },
+            "next": "s4"
+          },
+          {
+            "step_id": "s4",
+            "primitive": "feedback",
+            "feedback": {
+              "template_ref": {
+                "uri": "artifact://dlc/de/fsi-construction/feedback/vowel_quantity",
+                "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "media_type": "application/json"
+              }
+            },
+            "next": "s5"
+          },
+          {
+            "step_id": "s5",
+            "primitive": "schedule",
+            "claim_refs": [
+              "dlc.de.fsi-construction:claim/vowel_quantity"
+            ],
+            "schedule": {
+              "scheduler": "rule_based",
+              "interval": "PT24H"
+            },
+            "next": "s6"
+          },
+          {
+            "step_id": "s6",
+            "primitive": "stop",
+            "stop": {
+              "outcome": "success"
+            }
+          }
+        ],
+        "stop_conditions": [
+          {
+            "fact": "session.elapsed_ms",
+            "operator": "gte",
+            "value": {
+              "kind": "int",
+              "int": 900000
+            }
+          }
+        ]
+      },
+      "provenance": {
+        "input_hashes": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "passes": [
+          {
+            "id": "activity.codegen",
+            "version": "0.2.0",
+            "status": "completed"
+          }
+        ],
+        "compiled_at": "2026-08-15T12:00:00Z"
+      }
+    }
+  ]
+}

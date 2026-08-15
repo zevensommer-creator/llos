@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:material-request:0.2.0",
+  "title": "Material Request",
+  "description": "Typed request declared by a DLC (based on learning goals, learner projection and user instructions) for the material layer to resolve from stored packs, uploaded assets, or LLM generation. Failure to resolve does NOT silently degrade to chat; the learning session is paused or rejected (spec §2.6, §2.7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "dlc_ref",
+    "language",
+    "modality",
+    "constraints",
+    "claims_to_cover",
+    "allowed_sources",
+    "persistence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "request_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "dlc_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "session_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "language": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "genre": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "scenario_tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    },
+    "modality": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["text", "audio", "image", "dialogue"]
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["safety"],
+      "properties": {
+        "length": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_units": { "type": "integer", "minimum": 1 },
+            "max_units": { "type": "integer", "minimum": 1 },
+            "unit": { "enum": ["word", "sentence", "paragraph", "turn"] }
+          }
+        },
+        "difficulty_hint": {
+          "$ref": "#/$defs/TypedValue"
+        },
+        "must_include_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Identifier" }
+        },
+        "must_avoid_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/Identifier" },
+          "description": "Structures or topics that must not appear (e.g. not-yet-learned structures)."
+        },
+        "topic_tags": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "maxLength": 64 }
+        },
+        "safety": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["content_policy_ref"],
+          "properties": {
+            "content_policy_ref": { "$ref": "#/$defs/Identifier" },
+            "minimum_age": { "type": "integer", "minimum": 0, "maximum": 21 }
+          }
+        }
+      }
+    },
+    "claims_to_cover": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/ClaimRef"
+      },
+      "description": "Claims the resolved material should provide evidence opportunities for."
+    },
+    "randomness": {
+      "enum": ["none", "allowed", "required"]
+    },
+    "allowed_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "stored",
+          "uploaded",
+          "generated_random",
+          "generated_instructed",
+          "derived"
+        ]
+      }
+    },
+    "allow_variation_of": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/Identifier" },
+      "description": "Existing pack/frame IDs that may be used as variation seeds."
+    },
+    "persistence": {
+      "enum": ["ephemeral_only", "save_allowed"]
+    },
+    "user_instruction": {
+      "type": "string",
+      "maxLength": 4000,
+      "description": "Optional natural-language instruction from the learner; recorded in the MaterialSnapshot provenance."
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "TypedValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "string"],
+          "properties": {
+            "kind": { "const": "string" },
+            "string": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "int"],
+          "properties": {
+            "kind": { "const": "int" },
+            "int": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "float"],
+          "properties": {
+            "kind": { "const": "float" },
+            "float": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bool"],
+          "properties": {
+            "kind": { "const": "bool" },
+            "bool": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "schema_version", "payload_ref"],
+      "properties": {
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri", "sha256"],
+          "properties": {
+            "uri": { "type": "string", "format": "uri" },
+            "sha256": { "$ref": "#/$defs/Sha256" }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

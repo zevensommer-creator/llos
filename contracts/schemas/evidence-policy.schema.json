@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:evidence-policy:0.2.0",
+  "title": "Evidence Policy",
+  "description": "DLC-declared, versioned policy defining when evidence is sufficient for a mastery decision. DLC declares; Core validates and executes deterministically. No scripts, no direct state writes (spec §5.5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_ref",
+    "version",
+    "dlc_ref",
+    "compatible_claims",
+    "accepted_observations",
+    "gates",
+    "independence",
+    "session_requirements",
+    "abstention_handling",
+    "conflict_rules",
+    "projector",
+    "replay_rule_on_upgrade"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "policy_ref": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "dlc_ref": {
+      "$ref": "#/$defs/VersionedRef"
+    },
+    "compatible_claims": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all"
+          ],
+          "properties": {
+            "all": {
+              "const": true
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "refs"
+          ],
+          "properties": {
+            "refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ClaimRef"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "accepted_observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "binary",
+          "scalar",
+          "rubric_vector",
+          "timed",
+          "artifact_evidence",
+          "abstention"
+        ]
+      }
+    },
+    "accepted_metrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MetricRef"
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_measurement_confidence"
+      ],
+      "properties": {
+        "minimum_performance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Performance threshold on a DLC-declared normalizable metric. Distinct from measurement confidence."
+        },
+        "minimum_measurement_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Evaluator reliability gate. Results below it are retained as audit events but excluded from decisions."
+        }
+      }
+    },
+    "independence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hinted_counts_as_assisted",
+        "retry_after_answer_reveal_independent",
+        "paraphrase_of_same_material_independent"
+      ],
+      "properties": {
+        "hinted_counts_as_assisted": {
+          "type": "boolean"
+        },
+        "retry_after_answer_reveal_independent": {
+          "type": "boolean"
+        },
+        "paraphrase_of_same_material_independent": {
+          "type": "boolean"
+        }
+      }
+    },
+    "session_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_distinct_sessions",
+        "minimum_independent_successes",
+        "minimum_delayed_successes"
+      ],
+      "properties": {
+        "minimum_distinct_sessions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum_independent_successes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum_delayed_successes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum_delay": {
+          "$ref": "#/$defs/Duration",
+          "description": "Required delay before a success counts as delayed retention, e.g. PT24H."
+        },
+        "minimum_context_diversity": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Required only when the claim asserts transfer."
+        }
+      }
+    },
+    "requires_transfer": {
+      "type": "boolean",
+      "default": false
+    },
+    "requires_automatization": {
+      "type": "boolean",
+      "default": false
+    },
+    "automatization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_latency_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_within_subject_variability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "abstention_handling": {
+      "enum": [
+        "count_as_insufficient",
+        "ignore"
+      ],
+      "description": "Abstained observations never count as support or refutation."
+    },
+    "conflict_rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "high_confidence_failure_threshold",
+        "high_confidence_failures_before_lapse",
+        "lapse_requires_distinct_sessions"
+      ],
+      "properties": {
+        "high_confidence_failure_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "high_confidence_failures_before_lapse": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lapse_requires_distinct_sessions": {
+          "type": "boolean"
+        },
+        "staleness_window": {
+          "$ref": "#/$defs/Duration",
+          "description": "After this window without valid evidence the projection is marked stale."
+        }
+      }
+    },
+    "projector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "version"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "rule_based",
+            "fsrs_memory"
+          ],
+          "description": "fsrs_memory may only schedule reviews; it never alone declares learned."
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "params_ref": {
+          "$ref": "#/$defs/ArtifactRef",
+          "description": "Versioned projector parameters as a schema-validated artifact."
+        }
+      }
+    },
+    "replay_rule_on_upgrade": {
+      "enum": [
+        "parallel_new_projection"
+      ],
+      "description": "Policy upgrades replay into a new coexisting projection version; historical events and decisions are never rewritten."
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "PolicyRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:policy/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "MetricRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:metric/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Duration": {
+      "type": "string",
+      "pattern": "^P(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?:[0-9]+H)?(?:[0-9]+M)?(?:[0-9]+S)?)?$",
+      "minLength": 2
+    },
+    "VersionedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "origin": {
+          "enum": [
+            "stored",
+            "uploaded",
+            "generated_random",
+            "generated_instructed",
+            "derived"
+          ]
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

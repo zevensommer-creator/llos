@@ -1,0 +1,735 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:agent-work:0.2.0",
+  "title": "Agent Work Protocol",
+  "description": "Typed WorkItem and WorkResult records for bounded multi-agent orchestration. v0.2.0: extensions use ExtensionEnvelope; diagnostic details use scalar maps instead of arbitrary JSON (spec §4.4).",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/WorkItem"
+    },
+    {
+      "$ref": "#/$defs/WorkResult"
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "immutable": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "CapabilityRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "required",
+        "quality_floor",
+        "privacy_class"
+      ],
+      "properties": {
+        "capability": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "quality_floor": {
+          "enum": [
+            "economy",
+            "standard",
+            "premium"
+          ]
+        },
+        "privacy_class": {
+          "enum": [
+            "local_only",
+            "local_preferred",
+            "remote_allowed"
+          ]
+        },
+        "output_schema_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      }
+    },
+    "Budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_calls",
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_latency_ms",
+        "max_cost_usd"
+      ],
+      "properties": {
+        "max_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_audio_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_latency_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "Authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_tools",
+        "allowed_capabilities",
+        "data_scopes",
+        "denied_actions"
+      ],
+      "properties": {
+        "allowed_tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "allowed_capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+          }
+        },
+        "data_scopes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "public_material",
+              "licensed_material",
+              "learner_projection_minimal",
+              "learner_text_current_session",
+              "learner_audio_current_session",
+              "deidentified_research"
+            ]
+          }
+        },
+        "denied_actions": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "write_user_database",
+              "write_learning_event",
+              "change_contract",
+              "change_rubric",
+              "increase_budget",
+              "select_provider_directly",
+              "spawn_unbounded_work",
+              "exfiltrate_data"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "write_user_database"
+              }
+            },
+            {
+              "contains": {
+                "const": "write_learning_event"
+              }
+            },
+            {
+              "contains": {
+                "const": "increase_budget"
+              }
+            },
+            {
+              "contains": {
+                "const": "exfiltrate_data"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "WorkItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_type",
+        "work_id",
+        "work_type",
+        "contract_version",
+        "created_at",
+        "input_artifact_refs",
+        "required_capabilities",
+        "budget",
+        "authority",
+        "output_schema_ref",
+        "idempotency_key"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.2.0"
+        },
+        "record_type": {
+          "const": "work_item"
+        },
+        "work_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "workflow_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "parent_work_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "work_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "contract_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deadline_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "input_artifact_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          }
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CapabilityRequest"
+          }
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "authority": {
+          "$ref": "#/$defs/Authority"
+        },
+        "output_schema_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "random_seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "instructions": {
+          "description": "Bounded task instructions. They cannot override authority, budget or output schema.",
+          "type": "string",
+          "maxLength": 12000
+        },
+        "extensions": {
+          "$ref": "#/$defs/Extensions"
+        }
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "source_ref",
+        "claim",
+        "confidence"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "enum": [
+            "source_excerpt",
+            "rule_result",
+            "model_result",
+            "test_result",
+            "human_annotation",
+            "artifact_diff"
+          ]
+        },
+        "source_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "json_pointer": {
+              "type": "string",
+              "pattern": "^(?:/.*)?$"
+            },
+            "start_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end_ms": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "claim": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calls",
+        "input_tokens",
+        "output_tokens",
+        "audio_ms",
+        "latency_ms",
+        "cost_usd"
+      ],
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "audio_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cache_hits": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{2,127}$"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "Scalar diagnostic details only; complex payloads must use an artifact reference."
+        }
+      }
+    },
+    "ProviderTrace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_id",
+        "capability",
+        "provider_id",
+        "model_id",
+        "model_version",
+        "request_sha256",
+        "response_sha256",
+        "started_at",
+        "latency_ms",
+        "status"
+      ],
+      "properties": {
+        "trace_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "capability": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "failed",
+            "cancelled",
+            "timed_out"
+          ]
+        },
+        "fallback_from_trace_id": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "WorkResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_type",
+        "work_id",
+        "status",
+        "finished_at",
+        "artifacts",
+        "evidence",
+        "confidence",
+        "usage",
+        "diagnostics",
+        "provider_trace"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "0.2.0"
+        },
+        "record_type": {
+          "const": "work_result"
+        },
+        "work_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "rejected",
+            "failed",
+            "uncertain",
+            "cancelled"
+          ]
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "usage": {
+          "$ref": "#/$defs/Usage"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          }
+        },
+        "provider_trace": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderTrace"
+          }
+        },
+        "extensions": {
+          "$ref": "#/$defs/Extensions"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "artifacts": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "rejected",
+                  "failed",
+                  "uncertain",
+                  "cancelled"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "diagnostics": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.2.0",
+      "record_type": "work_item",
+      "work_id": "work.material.annotate.0001",
+      "workflow_id": "workflow.material.import.0001",
+      "work_type": "material.annotate",
+      "contract_version": "0.1.0",
+      "created_at": "2026-08-14T12:00:00Z",
+      "input_artifact_refs": [
+        {
+          "uri": "artifact://imports/hotel-dialogue/1",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "media_type": "text/plain",
+          "immutable": true
+        }
+      ],
+      "required_capabilities": [
+        {
+          "capability": "llm.structured_generate",
+          "required": true,
+          "quality_floor": "economy",
+          "privacy_class": "local_preferred",
+          "output_schema_ref": "artifact://schemas/material-annotation/0.1.0"
+        }
+      ],
+      "budget": {
+        "max_calls": 2,
+        "max_input_tokens": 8000,
+        "max_output_tokens": 4000,
+        "max_latency_ms": 15000,
+        "max_cost_usd": 0.02
+      },
+      "authority": {
+        "allowed_tools": [
+          "artifact.read",
+          "artifact.write_scoped"
+        ],
+        "allowed_capabilities": [
+          "llm.structured_generate"
+        ],
+        "data_scopes": [
+          "licensed_material"
+        ],
+        "denied_actions": [
+          "write_user_database",
+          "write_learning_event",
+          "change_contract",
+          "change_rubric",
+          "increase_budget",
+          "select_provider_directly",
+          "spawn_unbounded_work",
+          "exfiltrate_data"
+        ]
+      },
+      "output_schema_ref": "artifact://schemas/material-annotation/0.1.0",
+      "idempotency_key": "material.annotate:hotel-dialogue:1",
+      "random_seed": 42,
+      "instructions": "Annotate communicative intents and construction candidates. Do not rewrite source text."
+    }
+  ]
+}

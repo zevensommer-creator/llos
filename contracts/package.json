@@ -1,0 +1,22 @@
+{
+  "name": "@llos/contracts",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Generated types and validators for LLOS contract schemas (source of truth: docs/contracts)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "build": "pnpm run generate && tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "json-schema-to-typescript": "^15.0.0",
+    "typescript": "^5.7.0"
+  }
+}

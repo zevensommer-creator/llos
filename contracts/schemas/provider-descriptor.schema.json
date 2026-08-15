@@ -1,0 +1,775 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:provider-descriptor:0.2.0",
+  "title": "Provider Descriptor",
+  "description": "Capability, execution, cost, privacy and operational descriptor for a replaceable model or language service provider. Secrets are never stored in this object. v0.2.0: extensions use ExtensionEnvelope (spec §4.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider_id",
+    "version",
+    "display_name",
+    "execution",
+    "capabilities",
+    "models",
+    "limits",
+    "cost_model",
+    "privacy",
+    "license",
+    "health"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "provider_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "execution": {
+      "$ref": "#/$defs/Execution"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Capability"
+      }
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Model"
+      }
+    },
+    "hardware_requirements": {
+      "$ref": "#/$defs/HardwareRequirements"
+    },
+    "limits": {
+      "$ref": "#/$defs/Limits"
+    },
+    "cost_model": {
+      "$ref": "#/$defs/CostModel"
+    },
+    "privacy": {
+      "$ref": "#/$defs/Privacy"
+    },
+    "license": {
+      "$ref": "#/$defs/License"
+    },
+    "health": {
+      "$ref": "#/$defs/Health"
+    },
+    "benchmark_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      }
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "adapter_entrypoint",
+        "network_required",
+        "credential_ref_names"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "local",
+            "remote",
+            "hybrid"
+          ]
+        },
+        "adapter_entrypoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "network_required": {
+          "type": "boolean"
+        },
+        "credential_ref_names": {
+          "description": "Names of secret-manager references; never secret values.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,127}$"
+          }
+        },
+        "sandbox_required": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "Capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability_id",
+        "kind",
+        "operations",
+        "languages",
+        "quality_tiers",
+        "model_refs"
+      ],
+      "properties": {
+        "capability_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "kind": {
+          "enum": [
+            "llm",
+            "asr",
+            "tts",
+            "alignment",
+            "pronunciation_scoring",
+            "prosody_analysis",
+            "linguistic_tool"
+          ]
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
+          }
+        },
+        "languages": {
+          "oneOf": [
+            {
+              "const": "*"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/LanguageTag"
+              }
+            }
+          ]
+        },
+        "quality_tiers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "economy",
+              "standard",
+              "premium"
+            ]
+          }
+        },
+        "input_media_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9.+-]+/[a-zA-Z0-9.+-]+$"
+          }
+        },
+        "output_schema_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uri-reference"
+          }
+        },
+        "supports_streaming": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_batch": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_cancellation": {
+          "type": "boolean",
+          "default": false
+        },
+        "supports_seed": {
+          "type": "boolean",
+          "default": false
+        },
+        "model_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        }
+      }
+    },
+    "Model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_id",
+        "model_version",
+        "artifact_or_service_ref",
+        "languages",
+        "precision",
+        "status"
+      ],
+      "properties": {
+        "model_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artifact_or_service_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "languages": {
+          "oneOf": [
+            {
+              "const": "*"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/LanguageTag"
+              }
+            }
+          ]
+        },
+        "precision": {
+          "enum": [
+            "fp32",
+            "fp16",
+            "bf16",
+            "int8",
+            "int4",
+            "mixed",
+            "remote_unspecified"
+          ]
+        },
+        "status": {
+          "enum": [
+            "experimental",
+            "candidate",
+            "production",
+            "deprecated"
+          ]
+        },
+        "license_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "HardwareRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "architectures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "x86_64",
+              "aarch64"
+            ]
+          }
+        },
+        "cpu_features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "minimum_cpu_cores": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum_ram_mb": {
+          "type": "integer",
+          "minimum": 64
+        },
+        "gpu": {
+          "enum": [
+            "none",
+            "optional",
+            "required"
+          ]
+        },
+        "minimum_vram_mb": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "disk_mb": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_concurrency",
+        "request_timeout_ms"
+      ],
+      "properties": {
+        "max_concurrency": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "request_timeout_ms": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_audio_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rate_limit_per_minute": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "CostModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "effective_at",
+        "components"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "unit",
+              "price"
+            ],
+            "properties": {
+              "unit": {
+                "enum": [
+                  "request",
+                  "input_million_tokens",
+                  "cached_input_million_tokens",
+                  "output_million_tokens",
+                  "audio_input_minute",
+                  "audio_output_minute",
+                  "compute_second",
+                  "active_hour",
+                  "monthly_fixed"
+                ]
+              },
+              "price": {
+                "type": "number",
+                "minimum": 0
+              },
+              "model_ref": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 500
+              }
+            }
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "data_leaves_host",
+        "retention",
+        "training_use",
+        "supported_data_classes"
+      ],
+      "properties": {
+        "data_leaves_host": {
+          "type": "boolean"
+        },
+        "processing_regions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 40
+          }
+        },
+        "retention": {
+          "enum": [
+            "none",
+            "transient",
+            "provider_policy",
+            "configurable",
+            "unknown"
+          ]
+        },
+        "maximum_retention_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "training_use": {
+          "enum": [
+            "none",
+            "opt_in",
+            "opt_out",
+            "provider_policy",
+            "unknown"
+          ]
+        },
+        "supported_data_classes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "public",
+              "internal",
+              "personal_text",
+              "personal_audio",
+              "sensitive"
+            ]
+          }
+        }
+      }
+    },
+    "License": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code_spdx_id",
+        "model_license_status",
+        "commercial_use"
+      ],
+      "properties": {
+        "code_spdx_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "model_license_status": {
+          "enum": [
+            "same_as_code",
+            "separate_reviewed",
+            "separate_unreviewed",
+            "service_terms"
+          ]
+        },
+        "model_license_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri-reference"
+          }
+        },
+        "commercial_use": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "Health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_kind",
+        "timeout_ms",
+        "failure_threshold",
+        "recovery_threshold"
+      ],
+      "properties": {
+        "check_kind": {
+          "enum": [
+            "process",
+            "http",
+            "grpc",
+            "synthetic_request"
+          ]
+        },
+        "check_target": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "failure_threshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recovery_threshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.2.0",
+      "provider_id": "provider.asr.faster-whisper-cpu",
+      "version": "0.1.0",
+      "display_name": "Local faster-whisper CPU",
+      "execution": {
+        "mode": "local",
+        "adapter_entrypoint": "providers.faster_whisper:Provider",
+        "network_required": false,
+        "credential_ref_names": [],
+        "sandbox_required": true
+      },
+      "capabilities": [
+        {
+          "capability_id": "asr.transcribe",
+          "kind": "asr",
+          "operations": [
+            "transcribe",
+            "language_detect"
+          ],
+          "languages": [
+            "de-DE",
+            "en-US",
+            "fr-FR",
+            "ru-RU"
+          ],
+          "quality_tiers": [
+            "economy"
+          ],
+          "input_media_types": [
+            "audio/wav"
+          ],
+          "supports_streaming": false,
+          "supports_batch": true,
+          "supports_cancellation": true,
+          "supports_seed": false,
+          "model_refs": [
+            "faster-whisper-small-int8"
+          ]
+        }
+      ],
+      "models": [
+        {
+          "model_id": "faster-whisper-small-int8",
+          "model_version": "pinned-by-lockfile",
+          "artifact_or_service_ref": "artifact://models/faster-whisper-small-int8",
+          "languages": "*",
+          "precision": "int8",
+          "status": "candidate",
+          "license_ref": "https://github.com/SYSTRAN/faster-whisper/blob/master/LICENSE"
+        }
+      ],
+      "hardware_requirements": {
+        "architectures": [
+          "x86_64"
+        ],
+        "minimum_cpu_cores": 2,
+        "minimum_ram_mb": 4096,
+        "gpu": "none",
+        "disk_mb": 2000
+      },
+      "limits": {
+        "max_concurrency": 1,
+        "request_timeout_ms": 120000,
+        "max_audio_ms": 120000
+      },
+      "cost_model": {
+        "currency": "USD",
+        "effective_at": "2026-08-14T00:00:00Z",
+        "components": [
+          {
+            "unit": "compute_second",
+            "price": 0,
+            "notes": "Host cost is metered separately by deployment."
+          }
+        ]
+      },
+      "privacy": {
+        "data_leaves_host": false,
+        "processing_regions": [],
+        "retention": "none",
+        "training_use": "none",
+        "supported_data_classes": [
+          "public",
+          "internal",
+          "personal_text",
+          "personal_audio"
+        ]
+      },
+      "license": {
+        "code_spdx_id": "MIT",
+        "model_license_status": "separate_reviewed",
+        "model_license_refs": [
+          "artifact://licenses/faster-whisper-small-int8"
+        ],
+        "commercial_use": "allowed"
+      },
+      "health": {
+        "check_kind": "synthetic_request",
+        "check_target": "fixture://audio/de/silence-plus-word.wav",
+        "timeout_ms": 10000,
+        "failure_threshold": 3,
+        "recovery_threshold": 2
+      }
+    }
+  ]
+}
