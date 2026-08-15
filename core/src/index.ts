@@ -28,6 +28,17 @@ export {
 } from "./identity.js";
 export { InMemoryEntitlementStore, type Entitlement } from "./entitlements.js";
 export {
+  ByokVault,
+  ByokError,
+  maskKey,
+  BYOK_FAMILIES,
+  type ByokFamily,
+  type ByokEntryView,
+  type ByokSecret,
+  type RegisterByokInput,
+  type ByokVaultDeps,
+} from "./byok.js";
+export {
   InMemorySessionStore,
   type SessionInfo,
   type IssuedSession,

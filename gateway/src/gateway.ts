@@ -31,16 +31,19 @@ export class ProviderGateway {
   }
 
   async execute(request: ProviderRequest): Promise<ProviderResult> {
-    const candidates = this.#registry.resolve(request.capability_id, {
+    const resolved = this.#registry.resolve(request.capability_id, {
       operation: request.operation,
       language: request.language,
     });
-    if (candidates.length === 0) {
+    if (resolved.length === 0) {
       throw new GatewayError(
         "capability_unavailable",
         `no provider offers capability "${request.capability_id}" for the requested constraints`,
       );
     }
+    // BYOK 优先（product_spec §6.5：Studio AI 辅助默认不消耗平台算力）：
+    // prefer 集合内的 provider 排前，其余保留为 fallback（不变量 4 语义不变）。
+    const candidates = orderPreferFirst(resolved, request.prefer_provider_ids);
 
     const attempts: FailedAttempt[] = [];
     for (const candidate of candidates) {
@@ -63,4 +66,15 @@ export class ProviderGateway {
       attempts,
     );
   }
+}
+
+function orderPreferFirst<T extends { descriptor: { provider_id: string } }>(
+  resolved: readonly T[],
+  preferProviderIds: readonly string[] | undefined,
+): T[] {
+  if (!preferProviderIds || preferProviderIds.length === 0) return [...resolved];
+  const prefer = new Set(preferProviderIds);
+  const head = resolved.filter((c) => prefer.has(c.descriptor.provider_id));
+  const tail = resolved.filter((c) => !prefer.has(c.descriptor.provider_id));
+  return [...head, ...tail];
 }

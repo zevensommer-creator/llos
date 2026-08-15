@@ -18,6 +18,17 @@ export {
 } from "./gateway.js";
 export { FakeProvider, type FakeProviderOptions } from "./fake-provider.js";
 export {
+  byokDescriptorFor,
+  byokProviderId,
+  registerByokProvider,
+  ByokAdapter,
+  BYOK_CAPABILITY_ID,
+  BYOK_OPERATIONS,
+  type ByokEntryRef,
+  type ByokAdapterOptions,
+  type FakeByokTransport,
+} from "./byok.js";
+export {
   PIPER_TTS_DESCRIPTOR,
   PIPER_TTS_PROVIDER_ID,
   FakeTTSProvider,

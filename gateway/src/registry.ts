@@ -6,6 +6,8 @@ export interface ProviderRequest {
   language?: string;
   input: unknown;
   seed?: number;
+  /** 优先尝试的 provider（BYOK 路由）；其余 provider 保留为 fallback。 */
+  prefer_provider_ids?: string[];
 }
 
 export interface ProviderResult {
