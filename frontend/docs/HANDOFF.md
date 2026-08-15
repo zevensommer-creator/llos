@@ -57,17 +57,19 @@
 | G1 | 环境独立可跑 | kimi 在自己会话中执行 `pnpm install` → `pnpm -r build` → `pnpm -r test` → `pnpm -r typecheck` 全绿 | ✅ 2026-08-16：全 workspace 262 测试 + build/typecheck 全绿（api-client 20 测试含新增 17） |
 | G2 | 独立改码验证 | kimi 独立完成 UI-2 全量实现（七态模型 + 四旅程），流水线全绿，提交并入 main | ✅ 2026-08-16：提交 bb40ff9（24 文件，全在 frontend/）+ a56d7cf。注：本地 .git 分支创建损坏（refs 写不进去），经 Human 指示直提 main，未走 feature/kimi-* 分支 |
 | G3 | 认领登记 | 在 TASKS.md 变更记录登记 agent_id `kimi`；认领 T-017 并创建锁文件 | ✅ 2026-08-16：TASKS.md 认领（doing→done）+ T-017__kimi.lock 建/删全程留痕 |
-| G4 | CI 确认 | GitHub Actions 首跑结果核对（确认绿或登记阻塞） | ⏳ 待确认：push main（a56d7cf）已触发 CI；本地已跑等价流程全绿；需在 GitHub Actions 页肉眼确认 |
+| G4 | CI 确认 | GitHub Actions 首跑结果核对（确认绿或登记阻塞） | ✅ 2026-08-16：trae 代核（kimi 工具无法读 Actions）——GitHub API 查 12 次 run 全 success，含 kimi 首跑 run 10（a56d7cf）与最新 run 12（caa304d） |
 
 **阻塞项登记（Blocker Register）**：
 
 | ID | 阻塞项 | 责任人 | 状态 |
 |----|--------|--------|------|
-| B1 | CI 首跑尚未人工核对 | kimi（G4） | open（工具无法读 Actions 结果，本地等价流程已全绿） |
+| B1 | CI 首跑尚未人工核对 | kimi（G4） | closed 2026-08-16：trae 代核，12 次 run 全 success（含首跑 run 10） |
 | B2 | Figma 本体 FIGMA_PENDING（外部资产，不阻塞 UI-2 Mock） | Human | open |
 | B3 | CLIENT_SURFACE_SPEC §13 八项真机决策待 Human（不阻塞 UI-2，阻塞 UI-3） | Human | open |
 
 G4 确认后交接关闭：kimi 在本文件登记 `transferred: 2026-08-16`。
+
+**transferred: 2026-08-16** — G1–G3 由 kimi 独立完成，G4 因 kimi 工具无法读取 Actions 结果，经 Human 指示由 trae 代核关闭（12 次 CI run 全 success）。交接门全部关闭。kimi 离席后前端工作线暂由 trae 代管（T-026 起，见 TASKS.md）。
 
 ## 6. 下一步（UI-2，任务号见 TASKS.md T-017）
 
