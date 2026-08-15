@@ -27,6 +27,7 @@
 | T-004 | 定义 DLC 市场分类与发现机制 | todo | WorkBuddy | 中 | T-003 | 借鉴 Steam Workshop |
 | T-005 | 设计账户体系（多用户类型：教师/学生/自由学习者） | todo | TRAE | 中 | T-003 | 借鉴 Steam 账户 |
 | T-006 | 补齐协作环境（目录结构/.gitignore/docs 归档/远程备份） | done | WorkBuddy | 高 | T-002 | 经 Human 批准执行 |
+| T-007 | 工作空间整理：导出/暂存文件夹、历史归档与废稿分离、目录结构对齐基线 §3 | done | TRAE | 中 | T-003 | 经 Human 指示执行；废稿与归档均附 README 注明 |
 
 ---
 
@@ -55,6 +56,7 @@
 | 2026-08-09 | TRAE | 初始化任务看板 |
 | 2026-08-09 | WorkBuddy | 登记并完成 T-006（环境补齐，经 Human 批准）；提示 T-003 状态待 Human 确认（工程书 Word 版已存在于 docs/） |
 | 2026-08-15 | TRAE | T-003 转 review：设计阶段完成（架构基线 v0.1.2 含 ADR-009 版权责任制；产品规格 v0.5 含班级/Studio/生命周期/版权；BUILD_PLAN v1.0 分步 P0-P9；AGENTS.md v2.1；README 更新）。待 Human 全套审核后推送 GitHub |
+| 2026-08-15 | TRAE | T-007 完成：新建 导出/（16 份审核文件副本）与 暂存/（历史归档 4 件 + 废稿 1 件，均附 README）；删除旧 src/，建 core/compiler/gateway/speech/contracts/market/frontend/materials 模块目录；.gitignore 增加 导出/ |
 
 ---
 
