@@ -27,6 +27,10 @@ export class InMemoryEntitlementStore {
     return true;
   }
 
+  get(accountId: string, resourceRef: string): Entitlement | undefined {
+    return this.#entitlements.get(`${accountId}::${resourceRef}`);
+  }
+
   revoke(accountId: string, resourceRef: string): boolean {
     return this.#entitlements.delete(`${accountId}::${resourceRef}`);
   }
