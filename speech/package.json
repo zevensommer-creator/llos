@@ -1,0 +1,19 @@
+{
+  "name": "@llos/speech",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLOS pronunciation evidence pipeline: typed ports, deterministic orchestration, schema-valid assessments with abstention paths",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@llos/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

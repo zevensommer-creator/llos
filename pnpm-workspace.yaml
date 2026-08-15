@@ -4,6 +4,7 @@ packages:
   - compiler
   - gateway
   - market
+  - speech
   - frontend/apps/*
   - frontend/packages/*
 minimumReleaseAgeExclude:
