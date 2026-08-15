@@ -1,0 +1,908 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:learning-ir:0.1.0",
+  "title": "Learning IR",
+  "description": "Versioned pedagogical or executable intermediate representation exchanged between DLC compilers and Core.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ir_id",
+    "ir_version",
+    "ir_kind",
+    "language",
+    "created_at",
+    "compiler",
+    "source_refs",
+    "objectives",
+    "program",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "ir_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "ir_version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "ir_kind": {
+      "enum": [
+        "pedagogical",
+        "executable_session"
+      ]
+    },
+    "language": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "learner_locale": {
+      "$ref": "#/$defs/LanguageTag"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "compiler": {
+      "$ref": "#/$defs/CompilerRef"
+    },
+    "source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/ArtifactRef"
+      }
+    },
+    "learner_state_ref": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "random_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/LearningObjective"
+      }
+    },
+    "program": {},
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ir_kind": {
+            "const": "pedagogical"
+          }
+        },
+        "required": [
+          "ir_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "program": {
+            "$ref": "#/$defs/PedagogicalProgram"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ir_kind": {
+            "const": "executable_session"
+          }
+        },
+        "required": [
+          "ir_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "program": {
+            "$ref": "#/$defs/ExecutableSession"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": true
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "CompilerRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dlc_id",
+        "dlc_version",
+        "runtime_version"
+      ],
+      "properties": {
+        "dlc_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "dlc_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "runtime_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "build_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_hashes",
+        "passes"
+      ],
+      "properties": {
+        "input_hashes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        },
+        "passes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "version",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "version": {
+                "$ref": "#/$defs/SemVer"
+              },
+              "status": {
+                "enum": [
+                  "completed",
+                  "skipped",
+                  "degraded"
+                ]
+              },
+              "provider_trace_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/Identifier"
+                }
+              }
+            }
+          }
+        },
+        "compiled_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "LearningObjective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "domain",
+        "description",
+        "success_criteria"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "domain": {
+          "enum": [
+            "communicative",
+            "lexical",
+            "construction",
+            "valency",
+            "morphology",
+            "pronunciation",
+            "prosody",
+            "listening",
+            "reading",
+            "writing",
+            "pragmatics"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "target_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "success_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "metric",
+              "operator",
+              "value"
+            ],
+            "properties": {
+              "metric": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "operator": {
+                "enum": [
+                  "gte",
+                  "lte",
+                  "eq"
+                ]
+              },
+              "value": {
+                "type": "number"
+              },
+              "minimum_evidence_count": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "PedagogicalProgram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "theory_profile",
+        "targets",
+        "prerequisites",
+        "activity_plan",
+        "assessment_plan",
+        "remediation"
+      ],
+      "properties": {
+        "theory_profile": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "role": {
+                "enum": [
+                  "primary",
+                  "supporting",
+                  "constraint"
+                ]
+              },
+              "version": {
+                "type": "string",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "constructions": {
+              "$ref": "#/$defs/IdList"
+            },
+            "valency_frames": {
+              "$ref": "#/$defs/IdList"
+            },
+            "lexical_units": {
+              "$ref": "#/$defs/IdList"
+            },
+            "morphology": {
+              "$ref": "#/$defs/IdList"
+            },
+            "phonology": {
+              "$ref": "#/$defs/IdList"
+            },
+            "pragmatics": {
+              "$ref": "#/$defs/IdList"
+            }
+          }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "competency_ref",
+              "minimum_mastery"
+            ],
+            "properties": {
+              "competency_ref": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "minimum_mastery": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "activity_plan": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stage_id",
+              "activity_kind",
+              "objective_refs"
+            ],
+            "properties": {
+              "stage_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "activity_kind": {
+                "$ref": "#/$defs/ActivityKind"
+              },
+              "objective_refs": {
+                "$ref": "#/$defs/IdList"
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "time_budget_ms": {
+                "type": "integer",
+                "minimum": 1000
+              }
+            }
+          }
+        },
+        "assessment_plan": {
+          "$ref": "#/$defs/AssessmentPlan"
+        },
+        "remediation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "trigger",
+              "action"
+            ],
+            "properties": {
+              "trigger": {
+                "$ref": "#/$defs/Condition"
+              },
+              "action": {
+                "enum": [
+                  "repeat",
+                  "simplify",
+                  "model",
+                  "contrast",
+                  "explain",
+                  "defer",
+                  "stop"
+                ]
+              },
+              "target_stage_id": {
+                "$ref": "#/$defs/Identifier"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ExecutableSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_policy",
+        "entry_activity_id",
+        "activities",
+        "stop_conditions"
+      ],
+      "properties": {
+        "session_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "max_duration_ms",
+            "max_provider_cost_usd",
+            "on_provider_failure"
+          ],
+          "properties": {
+            "max_duration_ms": {
+              "type": "integer",
+              "minimum": 1000
+            },
+            "max_provider_cost_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "on_provider_failure": {
+              "enum": [
+                "retry",
+                "fallback",
+                "skip_activity",
+                "stop_session"
+              ]
+            },
+            "offline_allowed": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "entry_activity_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "activities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ExecutableActivity"
+          }
+        },
+        "stop_conditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Condition"
+          }
+        }
+      }
+    },
+    "ExecutableActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "objective_refs",
+        "presentation",
+        "response",
+        "assessment",
+        "event_outputs",
+        "transitions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActivityKind"
+        },
+        "objective_refs": {
+          "$ref": "#/$defs/IdList"
+        },
+        "presentation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "prompt"
+          ],
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10000
+            },
+            "asset_refs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ArtifactRef"
+              }
+            },
+            "reference_text": {
+              "type": "string",
+              "maxLength": 10000
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "input_modes",
+            "timeout_ms"
+          ],
+          "properties": {
+            "input_modes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "text",
+                  "audio",
+                  "choice",
+                  "ordering"
+                ]
+              }
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 1000
+            },
+            "allowed_answer_graph_ref": {
+              "$ref": "#/$defs/ArtifactRef"
+            },
+            "max_recording_ms": {
+              "type": "integer",
+              "minimum": 500
+            }
+          }
+        },
+        "assessment": {
+          "$ref": "#/$defs/AssessmentPlan"
+        },
+        "provider_slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "slot_id",
+              "capability",
+              "required"
+            ],
+            "properties": {
+              "slot_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "capability": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "quality_floor": {
+                "enum": [
+                  "economy",
+                  "standard",
+                  "premium"
+                ]
+              }
+            }
+          }
+        },
+        "event_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "when",
+              "target"
+            ],
+            "properties": {
+              "when": {
+                "$ref": "#/$defs/Condition"
+              },
+              "target": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Identifier"
+                  },
+                  {
+                    "enum": [
+                      "$complete",
+                      "$stop"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "AssessmentPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimensions",
+        "abstention_allowed"
+      ],
+      "properties": {
+        "dimensions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "weight",
+              "evidence_required"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "evidence_required": {
+                "type": "boolean"
+              },
+              "minimum_confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "abstention_allowed": {
+          "const": true
+        },
+        "rubric_ref": {
+          "$ref": "#/$defs/ArtifactRef"
+        }
+      }
+    },
+    "Condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact",
+        "operator",
+        "value"
+      ],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]+$"
+        },
+        "operator": {
+          "enum": [
+            "eq",
+            "neq",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "exists"
+          ]
+        },
+        "value": {}
+      }
+    },
+    "ActivityKind": {
+      "type": "string",
+      "enum": [
+        "presentation",
+        "recognition",
+        "recall",
+        "transformation",
+        "translation",
+        "substitution_drill",
+        "construction_drill",
+        "read_aloud",
+        "shadowing",
+        "constrained_response",
+        "open_response",
+        "listening",
+        "review"
+      ]
+    },
+    "IdList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.1.0",
+      "ir_id": "session.de.vowel-length.001",
+      "ir_version": "0.1.0",
+      "ir_kind": "executable_session",
+      "language": "de-DE",
+      "created_at": "2026-08-14T12:00:00Z",
+      "compiler": {
+        "dlc_id": "dlc.de.fsi-construction",
+        "dlc_version": "0.1.0",
+        "runtime_version": "0.1.0"
+      },
+      "source_refs": [
+        {
+          "uri": "artifact://materials/de-minimal-pairs/1",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "media_type": "application/json"
+        }
+      ],
+      "random_seed": 42,
+      "objectives": [
+        {
+          "id": "de.phonology.vowel_quantity",
+          "domain": "pronunciation",
+          "description": "Distinguish a selected German long/short vowel contrast in read-aloud speech.",
+          "success_criteria": [
+            {
+              "metric": "pronunciation.target_confidence",
+              "operator": "gte",
+              "value": 0.8,
+              "minimum_evidence_count": 3
+            }
+          ]
+        }
+      ],
+      "program": {
+        "session_policy": {
+          "max_duration_ms": 900000,
+          "max_provider_cost_usd": 0,
+          "on_provider_failure": "fallback",
+          "offline_allowed": true
+        },
+        "entry_activity_id": "a1",
+        "activities": [
+          {
+            "id": "a1",
+            "kind": "read_aloud",
+            "objective_refs": [
+              "de.phonology.vowel_quantity"
+            ],
+            "presentation": {
+              "prompt": "Bitte lies den Satz laut vor.",
+              "reference_text": "Wir bieten Ihnen diesen Termin an."
+            },
+            "response": {
+              "input_modes": [
+                "audio"
+              ],
+              "timeout_ms": 30000,
+              "max_recording_ms": 15000
+            },
+            "assessment": {
+              "dimensions": [
+                {
+                  "id": "pronunciation.vowel_quantity",
+                  "weight": 1,
+                  "evidence_required": true,
+                  "minimum_confidence": 0.8
+                }
+              ],
+              "abstention_allowed": true
+            },
+            "event_outputs": [
+              "learner.audio_submitted",
+              "pronunciation.assessed"
+            ],
+            "transitions": [
+              {
+                "when": {
+                  "fact": "activity.completed",
+                  "operator": "eq",
+                  "value": true
+                },
+                "target": "$complete"
+              }
+            ]
+          }
+        ],
+        "stop_conditions": [
+          {
+            "fact": "session.elapsed_ms",
+            "operator": "gte",
+            "value": 900000
+          }
+        ]
+      },
+      "provenance": {
+        "input_hashes": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "passes": [
+          {
+            "id": "activity.codegen",
+            "version": "0.1.0",
+            "status": "completed"
+          }
+        ],
+        "compiled_at": "2026-08-14T12:00:00Z"
+      }
+    }
+  ]
+}

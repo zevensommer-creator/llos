@@ -1,0 +1,731 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:dlc-manifest:0.1.0",
+  "title": "DLC Manifest",
+  "description": "Manifest for a pedagogical compiler plugin. A DLC declares theory, compiler passes and capability requirements but does not own user state or material content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dlc_id",
+    "version",
+    "display_name",
+    "compatibility",
+    "supported_languages",
+    "theory_profile",
+    "accepted_material_schemas",
+    "output_ir",
+    "passes",
+    "capability_requirements",
+    "permissions",
+    "budgets",
+    "quality_gates",
+    "package",
+    "license"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "dlc_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "compatibility": {
+      "$ref": "#/$defs/Compatibility"
+    },
+    "supported_languages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/LanguageSupport"
+      }
+    },
+    "theory_profile": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/TheoryDeclaration"
+      }
+    },
+    "accepted_material_schemas": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "format": "uri-reference"
+      }
+    },
+    "output_ir": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "version_range",
+        "kinds"
+      ],
+      "properties": {
+        "schema_id": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "version_range": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "kinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "pedagogical",
+              "executable_session"
+            ]
+          }
+        }
+      }
+    },
+    "passes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/CompilerPass"
+      }
+    },
+    "capability_requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CapabilityRequirement"
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "material.read",
+          "learner_state.read_projection",
+          "gateway.request",
+          "artifact.read",
+          "artifact.write_scoped",
+          "telemetry.write_scoped"
+        ]
+      }
+    },
+    "budgets": {
+      "$ref": "#/$defs/Budgets"
+    },
+    "quality_gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/QualityGate"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      }
+    },
+    "package": {
+      "$ref": "#/$defs/Package"
+    },
+    "license": {
+      "$ref": "#/$defs/License"
+    },
+    "integrity": {
+      "$ref": "#/$defs/Integrity"
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "VersionRange": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[0-9<>=~^*., xX|+-]+$"
+    },
+    "LanguageTag": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": true
+    },
+    "Compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "core_api",
+        "compiler_runtime"
+      ],
+      "properties": {
+        "core_api": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "compiler_runtime": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "minimum_contracts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/SemVer"
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9._-]+$"
+          }
+        }
+      }
+    },
+    "LanguageSupport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "release_tier",
+        "language_profile_ref"
+      ],
+      "properties": {
+        "language": {
+          "$ref": "#/$defs/LanguageTag"
+        },
+        "release_tier": {
+          "enum": [
+            "primary",
+            "secondary",
+            "experimental"
+          ]
+        },
+        "language_profile_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "minimum_calibration_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "supported_levels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(pre-)?[ABC][12](?:\\+)?$"
+          }
+        }
+      }
+    },
+    "TheoryDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "operational_claims"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "role": {
+          "enum": [
+            "primary",
+            "supporting",
+            "constraint"
+          ]
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "operational_claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_id",
+              "compiler_effect",
+              "test_ref"
+            ],
+            "properties": {
+              "claim_id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "compiler_effect": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "test_ref": {
+                "type": "string",
+                "format": "uri-reference"
+              }
+            }
+          }
+        }
+      }
+    },
+    "CompilerPass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "stage",
+        "entrypoint",
+        "input_kinds",
+        "output_kind",
+        "determinism",
+        "failure_policy"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "stage": {
+          "enum": [
+            "material_parse",
+            "semantic_lowering",
+            "theory",
+            "learner_optimization",
+            "activity_codegen",
+            "validation"
+          ]
+        },
+        "entrypoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "input_kinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "output_kind": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "determinism": {
+          "enum": [
+            "deterministic",
+            "seeded",
+            "probabilistic"
+          ]
+        },
+        "capability_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "failure_policy": {
+          "enum": [
+            "fail_compilation",
+            "skip_with_diagnostic",
+            "fallback_pass"
+          ]
+        },
+        "fallback_pass_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "config_schema_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      }
+    },
+    "CapabilityRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "capability",
+        "required",
+        "privacy_class",
+        "quality_floor"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "capability": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "languages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/LanguageTag"
+          }
+        },
+        "privacy_class": {
+          "enum": [
+            "local_only",
+            "local_preferred",
+            "remote_allowed"
+          ]
+        },
+        "quality_floor": {
+          "enum": [
+            "economy",
+            "standard",
+            "premium"
+          ]
+        },
+        "output_schema_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        }
+      }
+    },
+    "Budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compile_timeout_ms",
+        "max_provider_calls",
+        "max_cost_usd",
+        "max_memory_mb",
+        "max_output_bytes"
+      ],
+      "properties": {
+        "compile_timeout_ms": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 3600000
+        },
+        "max_provider_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_memory_mb": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "QualityGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stage",
+        "severity",
+        "validator_ref"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "stage": {
+          "enum": [
+            "install",
+            "compile",
+            "publish"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "validator_ref": {
+          "type": "string",
+          "format": "uri-reference"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "Dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version_range"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version_range": {
+          "$ref": "#/$defs/VersionRange"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "Package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_uri",
+        "media_type",
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "artifact_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "media_type": {
+          "enum": [
+            "application/zip",
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/wasm"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "License": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spdx_id",
+        "commercial_use"
+      ],
+      "properties": {
+        "spdx_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "license_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "commercial_use": {
+          "enum": [
+            "allowed",
+            "restricted",
+            "unknown"
+          ]
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "Integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_sha256"
+      ],
+      "properties": {
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        },
+        "signature": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "algorithm": {
+          "enum": [
+            "ed25519",
+            "ecdsa-p256-sha256",
+            "rsa-pss-sha256"
+          ]
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "0.1.0",
+      "dlc_id": "dlc.de.fsi-construction",
+      "version": "0.1.0",
+      "display_name": "German Intensive Construction Compiler",
+      "description": "Compiles semantic scenarios into intensive German drills using construction and valency constraints.",
+      "compatibility": {
+        "core_api": ">=0.1.0 <0.2.0",
+        "compiler_runtime": ">=0.1.0 <0.2.0",
+        "minimum_contracts": {
+          "learning-ir": "0.1.0",
+          "material-pack": "0.1.0"
+        }
+      },
+      "supported_languages": [
+        {
+          "language": "de-DE",
+          "release_tier": "primary",
+          "language_profile_ref": "artifact://language-profiles/de-DE/0.1.0",
+          "supported_levels": [
+            "A1",
+            "A2"
+          ]
+        }
+      ],
+      "theory_profile": [
+        {
+          "id": "construction-grammar",
+          "name": "Construction Grammar",
+          "role": "primary",
+          "operational_claims": [
+            {
+              "claim_id": "construction-as-learning-unit",
+              "compiler_effect": "Generate activities around form-meaning pair identifiers rather than isolated rules.",
+              "test_ref": "test://dlc/construction-unit"
+            }
+          ]
+        }
+      ],
+      "accepted_material_schemas": [
+        "urn:language-learning-platform:schema:material-pack:0.1.0"
+      ],
+      "output_ir": {
+        "schema_id": "urn:language-learning-platform:schema:learning-ir:0.1.0",
+        "version_range": ">=0.1.0 <0.2.0",
+        "kinds": [
+          "pedagogical",
+          "executable_session"
+        ]
+      },
+      "passes": [
+        {
+          "id": "semantic.lowering",
+          "version": "0.1.0",
+          "stage": "semantic_lowering",
+          "entrypoint": "passes.semantic_lowering:run",
+          "input_kinds": [
+            "material_pack"
+          ],
+          "output_kind": "semantic_ir",
+          "determinism": "deterministic",
+          "failure_policy": "fail_compilation"
+        }
+      ],
+      "capability_requirements": [
+        {
+          "id": "surface.realization",
+          "capability": "llm.structured_generate",
+          "required": false,
+          "languages": [
+            "de-DE"
+          ],
+          "privacy_class": "local_preferred",
+          "quality_floor": "economy",
+          "output_schema_ref": "artifact://schemas/surface-realization/0.1.0"
+        }
+      ],
+      "permissions": [
+        "material.read",
+        "learner_state.read_projection",
+        "gateway.request",
+        "artifact.read",
+        "artifact.write_scoped"
+      ],
+      "budgets": {
+        "compile_timeout_ms": 30000,
+        "max_provider_calls": 2,
+        "max_cost_usd": 0.02,
+        "max_memory_mb": 512,
+        "max_output_bytes": 5000000
+      },
+      "quality_gates": [
+        {
+          "id": "ir.schema.valid",
+          "stage": "compile",
+          "severity": "error",
+          "validator_ref": "validator://learning-ir/0.1.0"
+        }
+      ],
+      "package": {
+        "artifact_uri": "artifact://dlc/dlc.de.fsi-construction/0.1.0.zip",
+        "media_type": "application/zip",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "size_bytes": 102400
+      },
+      "license": {
+        "spdx_id": "Apache-2.0",
+        "commercial_use": "allowed"
+      }
+    }
+  ]
+}

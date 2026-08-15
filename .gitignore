@@ -15,3 +15,6 @@ Desktop.ini
 
 # Agent 内部状态（不进版本库）
 .workbuddy/
+
+# 导入暂存区（正本已归档到 docs/）
+导入/

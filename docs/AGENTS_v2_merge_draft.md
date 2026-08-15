@@ -1,3 +1,16 @@
+# AGENTS.md v2.0 合并草案（待 Human 批准）
+
+> **状态**：草案，未生效。批准后替换 `AGENTS.md`，并按附篇更新 `CONVENTIONS.md`。
+> **裁决原则**（Human 2026-08-15 裁定）：
+> 1. 凡冲突点，以新基线（导入版编码章程 + LANGUAGE_PLATFORM_SPEC v0.1.1）为准；
+> 2. 基线未覆盖的，以旧协作协议为准，但须适配新架构。
+
+---
+
+# 以下为拟生效的 AGENTS.md v2.0 全文
+
+---
+
 # AGENTS.md — LLOS 多智能体协作协议与编码章程
 
 > 本文件是 LLOS 项目所有协作智能体（TRAE、WorkBuddy 及未来加入者）的**唯一权威文件**，兼具双重角色：
@@ -231,7 +244,7 @@ Material Pack 必须可校验、可版本化、可替换。
 5. 先写契约测试或 golden test。
 6. 做最小改动。
 7. 运行测试和 schema 校验。
-8. 按第 22 节模板交付。
+8. 按第 19 节模板交付。
 
 ## 18. 完成定义
 
@@ -319,3 +332,66 @@ proposed_next_step:
 |------|------|------|
 | 1.0 | 2026-08-09 | 初版协作协议 |
 | 2.0 | 2026-08-15 | 合并编码章程；DLC 定义升级为编译器；目录结构与所有权按基线重映射；交付模板升级为 8 项 |
+
+---
+---
+
+# 附篇 A：CONVENTIONS.md 配套修改（待批准）
+
+仅改三处，其余不动：
+
+### A1. 第 2 节目录结构 → 替换为
+
+```
+core/          # Core 特权运行时
+compiler/      # DLC 编译
+gateway/       # Provider Gateway
+speech/        # 发音证据管线
+contracts/     # schema 生成的类型与校验代码
+market/        # DLC 市场（产品层）
+frontend/      # 前端界面（产品层）
+materials/     # Material Pack 库
+tests/         # 测试
+```
+
+（取消 `src/` 前缀，与 AGENTS.md 第 3 节一致）
+
+### A2. 第 5 节术语表 → 替换为
+
+| 术语 | 含义 | 禁止写法 |
+|------|------|---------|
+| DLC | 教学编译器：把素材、学习者状态和教学目标编译成 Learning IR | 不要写成"课程内容包/course pack" |
+| Material Pack | 素材包：文音对齐词汇等素材，可换、可被不同 DLC 编译 | 不要把教学策略塞进素材包 |
+| Learning IR | 三层中间表示，系统稳定 ABI | 不要传任意 JSON 替代 |
+| Provider | 模型接入抽象（DeepSeek/OpenAI/本地模型皆然） | 业务代码不得出现模型品牌 |
+| Core | 特权运行时，唯一可写学习事件/授权/隐私同意的层 | 不要在里面塞教学逻辑 |
+| Market | DLC 市场（展示层可呈现为"学习内容包"） | 不要写成 "store" |
+| Account | 账户与授权体系 | — |
+
+核心红线不变：Core 中禁止硬编码任何具体语言或教学理论。
+
+### A3. 第 8 节测试规范 → 末尾追加一句
+
+> 测试层次与覆盖要求另见 `AGENTS.md` 第 19 节测试矩阵。
+
+---
+
+# 附篇 B：TASKS.md 建议改动（Human 所有，仅提案）
+
+1. **T-003 标记 done**：工程书已由架构基线 v0.1.1 + 产品规格 v0.2 承接。
+2. 新增任务（来自基线"下一步"）：
+   - T-NEW-1：对现有工程（`llos-demo.html` + WorkBuddy 部署方案）做 gap audit，对照基线第 16 章问题清单
+   - T-NEW-2：建立 `contracts/` 生成管线（schema → 类型/校验代码）
+   - T-NEW-3：建立 golden test：一个最小 Material Pack + 一个最小 DLC → Executable IR
+   - T-NEW-4：实现 Provider Gateway 和 Fake Provider
+   - T-NEW-5：实现追加式学习事件存储和确定性 reducer
+   - T-NEW-6：实现发音证据管线最小闭环（VAD→ASR→对齐→GOP→韵律→校准器→弃权路径）
+3. 产品层待决事项（来自 product_spec 第 7 节）保持 pending，由 Human 与 TRAE 继续细化。
+
+---
+
+# 附篇 C：其他适配动作（待批准）
+
+1. schema 正本位置：目前在 `docs/contracts/`。基线布局将 `contracts/` 置于代码根目录。建议维持现状——`docs/contracts/` 为 schema 正本（Human 可读、走 ADR），根目录 `contracts/` 只放生成代码。无需移动文件。
+2. `docs/语音交互方案与发音评价研究.md` 已在 product_spec 中标注"决策由 ADR-004/005/007 做出"，保留作选型过程档案，不再作为决策依据。
+3. 批准后执行顺序：替换 AGENTS.md → 更新 CONVENTIONS.md → （Human 确认后）更新 TASKS.md → git commit。
