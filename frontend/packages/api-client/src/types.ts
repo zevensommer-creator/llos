@@ -400,6 +400,117 @@ export interface WorkbenchView {
 }
 
 // ---------------------------------------------------------------------------
+// T-032: Studio 创作者流程（product_spec §6：粘贴/上传 → AI 结构化 → 表单确认
+// → 沙箱试用 → 发布；BYOK 密钥；版本对创作者隐形；下架告知义务）。
+// 形状与 @llos/studio（StudioDrafts/StudioService/runSandboxTrial）对齐；
+// 门禁结果由服务端（Mock 模拟）裁决，UI 隐藏按钮不是安全控制。
+// ---------------------------------------------------------------------------
+
+/** 结构化单元（向导表单中的"第 N 课"）。 */
+export interface StudioUnitView {
+  unit_no: number;
+  frame_type: "scenario" | "argument_structure" | "concept";
+  title: string;
+  pattern: string;
+  lemma?: string;
+}
+
+/** 草稿视图（结构化产物，创作者表单确认前的编辑对象）。 */
+export interface StudioDraftView {
+  draft_id: string;
+  status: "structured" | "confirmed" | "published" | "discarded";
+  title: string;
+  language: string;
+  cefr_level: string;
+  units: readonly StudioUnitView[];
+  structured_by: { provider_id: string; model_id?: string };
+  updated_at: string;
+}
+
+/** 已发布课程条目（我的课程列表项；版本号对创作者隐形 §6.7）。 */
+export interface StudioDlcView {
+  dlc_id: string;
+  title: string;
+  language: string;
+  summary: string;
+  difficulty: string;
+  tags: readonly string[];
+  price_model: "free" | "one_time" | "subscription";
+  published_at: string;
+  delisted: boolean;
+}
+
+/** 沙箱试用报告（§6.4：不写真实学习事件）。 */
+export interface SandboxReportView {
+  status: "completed" | "aborted";
+  steps_completed: number;
+  events_appended: number;
+  real_event_store_used: false;
+  executed_at: string;
+}
+
+/** BYOK 密钥条目（仅掩码视图；明文永不出服务端 §6.5）。 */
+export interface ByokEntryView {
+  entry_id: string;
+  provider_family: string;
+  label: string;
+  masked_key: string;
+  created_at: string;
+}
+
+export interface CreateStudioDraftInput {
+  text: string;
+  title: string;
+  language: string;
+  cefrLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+}
+
+export type CreateStudioDraftOutcome =
+  | { status: "created"; draft: StudioDraftView }
+  | { status: "permission_denied"; required_capability: "create_dlc_draft"; message: string }
+  | { status: "ingest_empty"; message: string }
+  | { status: "structure_invalid"; message: string };
+
+export interface StudioDraftEditInput {
+  title?: string;
+  units?: readonly { frame_type: StudioUnitView["frame_type"]; title: string; pattern: string; lemma?: string }[];
+}
+
+export type EditStudioDraftOutcome =
+  | { status: "saved"; draft: StudioDraftView }
+  | { status: "confirm_failed"; message: string }
+  | { status: "state_invalid"; message: string }
+  | { status: "not_found"; message: string };
+
+export type SandboxOutcome =
+  | { status: "ran"; report: SandboxReportView }
+  | { status: "compile_failed"; message: string }
+  | { status: "not_found"; message: string };
+
+export interface PublishStudioInput {
+  summary: string;
+  difficulty: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  tags: readonly string[];
+  /** §6.9 告知义务：必须显式确认知悉下架规则。 */
+  acknowledged_delist_terms: boolean;
+}
+
+export type PublishStudioOutcome =
+  | { status: "published"; dlc: StudioDlcView }
+  | { status: "permission_denied"; required_capability: "publish_dlc"; message: string }
+  | { status: "acknowledgement_required"; message: string }
+  | { status: "state_invalid"; message: string }
+  | { status: "invalid_input"; message: string };
+
+export type DelistStudioOutcome =
+  | { status: "delisted"; dlc_id: string }
+  | { status: "not_found"; message: string };
+
+export type RegisterByokOutcome =
+  | { status: "registered"; entry: ByokEntryView }
+  | { status: "invalid_key"; message: string };
+
+// ---------------------------------------------------------------------------
 // ApiClient：UI-1 三个方法 + UI-2 四个旅程方法（页面禁止散落 fetch，§4）
 // ---------------------------------------------------------------------------
 
@@ -430,4 +541,18 @@ export interface ApiClient {
   postClassNotice(classId: string, text: string): Promise<PostNoticeOutcome>;
   loadClassUnlockState(classId: string): Promise<readonly ClassUnlockItem[] | null>;
   loadClassStats(classId: string): Promise<ClassStatsView | null>;
+
+  /** T-032 Studio 流程：BYOK / 草稿向导 / 沙箱 / 发布 / 下架（门禁由服务端重新授权）。 */
+  listByokKeys(): Promise<readonly ByokEntryView[]>;
+  registerByokKey(providerFamily: string, label: string, key: string): Promise<RegisterByokOutcome>;
+  listStudioDlcs(): Promise<readonly StudioDlcView[]>;
+  createStudioDraft(input: CreateStudioDraftInput): Promise<CreateStudioDraftOutcome>;
+  getStudioDraft(draftId: string): Promise<StudioDraftView | null>;
+  editStudioDraft(draftId: string, edit: StudioDraftEditInput): Promise<EditStudioDraftOutcome>;
+  confirmStudioDraft(draftId: string, edit: StudioDraftEditInput): Promise<EditStudioDraftOutcome>;
+  discardStudioDraft(draftId: string): Promise<EditStudioDraftOutcome>;
+  runSandboxTrial(draftId: string): Promise<SandboxOutcome>;
+  publishStudioDraft(draftId: string, input: PublishStudioInput): Promise<PublishStudioOutcome>;
+  startRevision(dlcId: string): Promise<CreateStudioDraftOutcome>;
+  delistStudioDlc(dlcId: string): Promise<DelistStudioOutcome>;
 }

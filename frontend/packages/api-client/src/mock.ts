@@ -3,6 +3,7 @@ import type {
   AcquireOutcome,
   ApiClient,
   ApiError,
+  ByokEntryView,
   CapabilityId,
   ChatSessionView,
   ClassAssignmentView,
@@ -12,7 +13,12 @@ import type {
   ClassSummary,
   ClassUnlockItem,
   CreateClassOutcome,
+  CreateStudioDraftInput,
+  CreateStudioDraftOutcome,
   AssignOutcome,
+  DelistStudioOutcome,
+  EditStudioDraftOutcome,
+  StudioDraftEditInput,
   EntitlementViewModel,
   HomeCard,
   HomeOverview,
@@ -25,7 +31,14 @@ import type {
   MarketListingDetail,
   MarketQuery,
   PostNoticeOutcome,
+  PublishStudioInput,
+  PublishStudioOutcome,
+  RegisterByokOutcome,
   ReviewOutcome,
+  SandboxOutcome,
+  StudioDraftView,
+  StudioDlcView,
+  StudioUnitView,
   TeacherMobileDashboardViewModel,
   WorkbenchSection,
   WorkbenchView,
@@ -39,7 +52,13 @@ const BASE_CAPABILITIES: readonly CapabilityId[] = [
   "create_dlc_draft",
 ];
 
-const TEACHER_EXTRA: readonly CapabilityId[] = [...BASE_CAPABILITIES, "create_class"];
+// Mock 教师账户 = teacher_verified：core 语义下额外持有 CREATOR 能力（publish_dlc 等）
+// + create_class（T-029 班级）。学习者保持基础能力：可建草稿、不可发布。
+const TEACHER_EXTRA: readonly CapabilityId[] = [
+  ...BASE_CAPABILITIES,
+  "create_class",
+  "publish_dlc",
+];
 
 export interface MockApiClientOptions {
   account?: "learner" | "teacher";
@@ -74,6 +93,8 @@ interface MarketListingRecord {
   publisher_name: string;
   published_at: string;
   downloads: number;
+  /** T-032：Studio 下架标记——目录隐藏，已获取用户保留访问权（§6.9）。 */
+  delisted?: boolean;
 }
 
 interface MarketAccountState {
@@ -278,6 +299,164 @@ export function resetMockClasses(): void {
   CLASS_STORE = seedClassStore();
 }
 
+// ---------------------------------------------------------------------------
+// T-032: 模块级 Studio 状态。Mock 层模拟 @llos/studio 服务端语义：
+// - 摄入结构化沿用后端 deterministic transport 的行协议（"Szenario: 标题 | 例句"）；
+// - 草稿状态机 structured → confirmed → published / discarded；
+// - 发布门禁 = confirmed + delist 告知确认（§6.9）；
+// - 发布免费 DLC 注入 MARKET_STORE（市场即时可见，闭环演示）；
+// - 版本号对创作者隐形（§6.7）：视图层不含 version 字段；
+// - BYOK 明文不出存储，列表仅掩码（§6.5，掩码规则与 core maskKey 一致）。
+// ---------------------------------------------------------------------------
+
+interface MockByokRecord {
+  entry_id: string;
+  account_id: string;
+  provider_family: string;
+  label: string;
+  api_key: string;
+  created_at: string;
+}
+
+interface MockStudioDraft {
+  draft_id: string;
+  creator_id: string;
+  status: "structured" | "confirmed" | "published" | "discarded";
+  title: string;
+  language: string;
+  cefr_level: string;
+  units: StudioUnitView[];
+  structured_by: { provider_id: string; model_id?: string };
+  updated_at: string;
+}
+
+interface MockStudioDlc {
+  dlc_id: string;
+  creator_id: string;
+  title: string;
+  language: string;
+  summary: string;
+  difficulty: string;
+  tags: string[];
+  price_model: "free" | "one_time" | "subscription";
+  published_at: string;
+  delisted: boolean;
+  /** 修订基线（§6.7）：startRevision 以此为起点新建草稿。 */
+  units: StudioUnitView[];
+  cefr_level: string;
+}
+
+interface MockStudioStore {
+  byok: MockByokRecord[];
+  drafts: Map<string, MockStudioDraft>;
+  published: Map<string, MockStudioDlc>;
+  nextId: { draft: number; dlc: number; byok: number };
+}
+
+function seedStudioStore(): MockStudioStore {
+  const store: MockStudioStore = {
+    byok: [
+      {
+        entry_id: "byok.mock.1",
+        account_id: TEACHER_ID,
+        provider_family: "deepseek",
+        label: "备课用 DeepSeek Key",
+        api_key: "sk-byok-mock-0123456789abcdef",
+        created_at: "2026-08-14T09:00:00Z",
+      },
+    ],
+    drafts: new Map(),
+    published: new Map(),
+    nextId: { draft: 1, dlc: 1, byok: 2 },
+  };
+  return store;
+}
+
+let STUDIO_STORE: MockStudioStore = seedStudioStore();
+
+/** 恢复 Studio 种子数据（测试隔离用）。 */
+export function resetMockStudio(): void {
+  STUDIO_STORE = seedStudioStore();
+}
+
+/** 掩码规则与 core maskKey 一致：保留前 3 后 4；短密钥不露任何字符。 */
+function maskKey(apiKey: string): string {
+  if (apiKey.length < 12) return "…";
+  return `${apiKey.slice(0, 3)}…${apiKey.slice(-4)}`;
+}
+
+/** 结构化（Mock 层复刻 deterministicStructureTransport 行协议）。 */
+function structureUnits(text: string): { ok: true; units: StudioUnitView[] } | { ok: false; reason: "empty" | "invalid" } {
+  const lines = text.split(/\r?\n/);
+  const units: StudioUnitView[] = [];
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (line.length === 0) continue;
+    const sep = line.indexOf(":");
+    if (sep <= 0) continue;
+    const prefix = line.slice(0, sep).trim().toLowerCase();
+    const parts = line.slice(sep + 1).split("|").map((p) => p.trim());
+    const title = parts[0];
+    const pattern = parts[1] ?? title;
+    if (title.length === 0 || pattern.length === 0) continue;
+    const frameType =
+      prefix === "szenario" || prefix === "scenario"
+        ? "scenario"
+        : prefix === "valenz" || prefix === "valence"
+          ? "argument_structure"
+          : "concept";
+    const lemma = parts[2];
+    units.push({
+      unit_no: units.length + 1,
+      frame_type: frameType,
+      title,
+      pattern,
+      ...(lemma && lemma.length > 0 ? { lemma } : {}),
+    });
+  }
+  if (units.length === 0) {
+    return lines.every((l) => l.trim().length === 0) ? { ok: false, reason: "empty" } : { ok: false, reason: "invalid" };
+  }
+  return { ok: true, units };
+}
+
+/** 单元表单校验（错误信息教学化，§6.2 不暴露技术错误）。 */
+function validateUnits(units: readonly { title: string; pattern: string }[]): string | null {
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].title.trim().length === 0) return `第 ${i + 1} 课还没有标题，请补全后再确认`;
+    if (units[i].pattern.trim().length === 0) return `第 ${i + 1} 课还没有例句，请补全后再确认`;
+  }
+  if (units.length === 0) return "课程至少需要 1 个学习单元";
+  return null;
+}
+
+function draftView(draft: MockStudioDraft): StudioDraftView {
+  return Object.freeze({
+    draft_id: draft.draft_id,
+    status: draft.status,
+    title: draft.title,
+    language: draft.language,
+    cefr_level: draft.cefr_level,
+    units: Object.freeze(draft.units.map((u) => Object.freeze({ ...u }))),
+    structured_by: Object.freeze({ ...draft.structured_by }),
+    updated_at: draft.updated_at,
+  });
+}
+
+function dlcView(dlc: MockStudioDlc): StudioDlcView {
+  return Object.freeze({
+    dlc_id: dlc.dlc_id,
+    title: dlc.title,
+    language: dlc.language,
+    summary: dlc.summary,
+    difficulty: dlc.difficulty,
+    tags: Object.freeze([...dlc.tags]),
+    price_model: dlc.price_model,
+    published_at: dlc.published_at,
+    delisted: dlc.delisted,
+  });
+}
+
 function marketStateFor(accountId: string): MarketAccountState {
   let state = MARKET_STORE.accounts.get(accountId);
   if (!state) {
@@ -357,6 +536,7 @@ export class MockApiClient implements ApiClient {
     const search = query.search?.trim().toLowerCase();
     const entries = [...MARKET_STORE.listings.values()]
       .filter((listing) => {
+        if (listing.delisted) return false;
         if (query.language && listing.language !== query.language) return false;
         if (query.difficulty && listing.difficulty !== query.difficulty) return false;
         if (query.tags?.length && !query.tags.every((tag) => listing.tags.includes(tag))) return false;
@@ -398,7 +578,7 @@ export class MockApiClient implements ApiClient {
 
   getMarketListing(dlcId: string): Promise<MarketListingDetail | null> {
     const listing = MARKET_STORE.listings.get(dlcId);
-    if (!listing) return Promise.resolve(null);
+    if (!listing || listing.delisted) return Promise.resolve(null);
     const state = marketStateFor(this.#account.account_id);
     const owned = state.owned.has(dlcId);
     const { average, count } = ratingSummaryFor(dlcId);
@@ -426,6 +606,13 @@ export class MockApiClient implements ApiClient {
   acquireListing(dlcId: string): Promise<AcquireOutcome> {
     const listing = MARKET_STORE.listings.get(dlcId);
     if (!listing) return Promise.resolve({ status: "not_found" });
+    // 已下架：停止新获取；已获取用户走 already_owned 幂等保留（§6.9）。
+    if (listing.delisted) {
+      const state = marketStateFor(this.#account.account_id);
+      return state.owned.has(dlcId)
+        ? Promise.resolve({ status: "already_owned" })
+        : Promise.resolve({ status: "not_found" });
+    }
     if (listing.price_model !== "free") {
       return Promise.resolve({ status: "payment_not_available", price_model: listing.price_model });
     }
@@ -705,6 +892,294 @@ export class MockApiClient implements ApiClient {
       archived: klass.archived,
       is_creator: klass.creator_id === this.#account.account_id,
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // T-032 Studio 流程（Mock 层模拟服务端门禁，语义对齐 @llos/studio）
+  // -------------------------------------------------------------------------
+
+  listByokKeys(): Promise<readonly ByokEntryView[]> {
+    return Promise.resolve(
+      Object.freeze(
+        STUDIO_STORE.byok
+          .filter((entry) => entry.account_id === this.#account.account_id)
+          .map((entry) => Object.freeze({
+            entry_id: entry.entry_id,
+            provider_family: entry.provider_family,
+            label: entry.label,
+            masked_key: maskKey(entry.api_key),
+            created_at: entry.created_at,
+          })),
+      ),
+    );
+  }
+
+  registerByokKey(providerFamily: string, label: string, key: string): Promise<RegisterByokOutcome> {
+    const trimmed = key.trim();
+    if (trimmed.length < 12) {
+      return Promise.resolve({
+        status: "invalid_key",
+        message: "密钥太短，请完整粘贴 Provider 控制台里的 API 密钥",
+      });
+    }
+    const entry: MockByokRecord = {
+      entry_id: `byok.mock.${STUDIO_STORE.nextId.byok++}`,
+      account_id: this.#account.account_id,
+      provider_family: providerFamily.trim() || "deepseek",
+      label: label.trim() || "我的密钥",
+      api_key: trimmed,
+      created_at: "2026-08-16T12:00:00Z",
+    };
+    STUDIO_STORE.byok.push(entry);
+    return Promise.resolve({
+      status: "registered",
+      entry: Object.freeze({
+        entry_id: entry.entry_id,
+        provider_family: entry.provider_family,
+        label: entry.label,
+        masked_key: maskKey(entry.api_key),
+        created_at: entry.created_at,
+      }),
+    });
+  }
+
+  listStudioDlcs(): Promise<readonly StudioDlcView[]> {
+    return Promise.resolve(
+      Object.freeze(
+        [...STUDIO_STORE.published.values()]
+          .filter((dlc) => dlc.creator_id === this.#account.account_id)
+          .sort((a, b) => b.published_at.localeCompare(a.published_at))
+          .map(dlcView),
+      ),
+    );
+  }
+
+  createStudioDraft(input: CreateStudioDraftInput): Promise<CreateStudioDraftOutcome> {
+    if (!this.#account.capabilities.includes("create_dlc_draft")) {
+      return Promise.resolve({
+        status: "permission_denied",
+        required_capability: "create_dlc_draft",
+        message: "创建课程草稿需要 create_dlc_draft 能力（服务端重新授权，product_spec §6.2）",
+      });
+    }
+    const structured = structureUnits(input.text);
+    if (!structured.ok) {
+      return Promise.resolve(
+        structured.reason === "empty"
+          ? {
+              status: "ingest_empty",
+              message: "没有可读取的内容，请检查粘贴的文字或上传的文件",
+            }
+          : {
+              status: "structure_invalid",
+              message: "AI 结构化结果无法使用：没有识别出任何课程单元。请按“Szenario: 标题 | 例句”一行一课的格式整理，或调整输入内容。",
+            },
+      );
+    }
+    const draft: MockStudioDraft = {
+      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft++}`,
+      creator_id: this.#account.account_id,
+      status: "structured",
+      title: input.title.trim() || "未命名课程",
+      language: input.language,
+      cefr_level: input.cefrLevel,
+      units: structured.units,
+      structured_by: { provider_id: "provider.byok.deepseek", model_id: "deepseek-chat" },
+      updated_at: "2026-08-16T12:05:00Z",
+    };
+    STUDIO_STORE.drafts.set(draft.draft_id, draft);
+    return Promise.resolve({ status: "created", draft: draftView(draft) });
+  }
+
+  #ownedDraft(draftId: string): MockStudioDraft | null {
+    const draft = STUDIO_STORE.drafts.get(draftId);
+    if (!draft || draft.creator_id !== this.#account.account_id) return null;
+    return draft;
+  }
+
+  getStudioDraft(draftId: string): Promise<StudioDraftView | null> {
+    const draft = this.#ownedDraft(draftId);
+    return Promise.resolve(draft ? draftView(draft) : null);
+  }
+
+  #applyEdit(draft: MockStudioDraft, edit: StudioDraftEditInput): EditStudioDraftOutcome {
+    if (edit.title !== undefined && edit.title.trim().length === 0) {
+      return { status: "confirm_failed", message: "课程标题不能为空" };
+    }
+    const units =
+      edit.units !== undefined
+        ? edit.units.map((u, i) => ({ ...u, unit_no: i + 1 }))
+        : draft.units;
+    const invalid = validateUnits(units);
+    if (invalid) return { status: "confirm_failed", message: invalid };
+    draft.title = edit.title?.trim() || draft.title;
+    draft.units = units;
+    draft.updated_at = "2026-08-16T12:10:00Z";
+    return { status: "saved", draft: draftView(draft) };
+  }
+
+  editStudioDraft(draftId: string, edit: StudioDraftEditInput): Promise<EditStudioDraftOutcome> {
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) return Promise.resolve({ status: "not_found", message: "草稿不存在" });
+    if (draft.status === "published" || draft.status === "discarded") {
+      return Promise.resolve({
+        status: "state_invalid",
+        message: `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
+      });
+    }
+    return Promise.resolve(this.#applyEdit(draft, edit));
+  }
+
+  confirmStudioDraft(draftId: string, edit: StudioDraftEditInput): Promise<EditStudioDraftOutcome> {
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) return Promise.resolve({ status: "not_found", message: "草稿不存在" });
+    if (draft.status === "published" || draft.status === "discarded") {
+      return Promise.resolve({
+        status: "state_invalid",
+        message: `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
+      });
+    }
+    const applied = this.#applyEdit(draft, edit);
+    if (applied.status !== "saved") return Promise.resolve(applied);
+    draft.status = "confirmed";
+    draft.updated_at = "2026-08-16T12:12:00Z";
+    return Promise.resolve({ status: "saved", draft: draftView(draft) });
+  }
+
+  discardStudioDraft(draftId: string): Promise<EditStudioDraftOutcome> {
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) return Promise.resolve({ status: "not_found", message: "草稿不存在" });
+    if (draft.status === "published") {
+      return Promise.resolve({
+        status: "state_invalid",
+        message: "已发布的课程请走下架流程，不能直接废弃草稿",
+      });
+    }
+    draft.status = "discarded";
+    draft.updated_at = "2026-08-16T12:14:00Z";
+    return Promise.resolve({ status: "saved", draft: draftView(draft) });
+  }
+
+  runSandboxTrial(draftId: string): Promise<SandboxOutcome> {
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) return Promise.resolve({ status: "not_found", message: "草稿不存在" });
+    if (draft.units.length === 0) {
+      return Promise.resolve({
+        status: "compile_failed",
+        message: "试运行前的编译检查未通过：课程里没有任何学习单元",
+      });
+    }
+    // 沙箱报告语义对齐 runSandboxTrial：每个单元走呈现+作答+反馈三步，事件只进丢弃式收集器。
+    const steps = draft.units.length * 3 + 1;
+    return Promise.resolve({
+      status: "ran",
+      report: Object.freeze({
+        status: "completed",
+        steps_completed: steps,
+        events_appended: draft.units.length * 3,
+        real_event_store_used: false,
+        executed_at: "2026-08-16T12:16:00Z",
+      }),
+    });
+  }
+
+  publishStudioDraft(draftId: string, input: PublishStudioInput): Promise<PublishStudioOutcome> {
+    // 发布门禁：publish_dlc（market 层执行；teacher/developer verified 持有）。
+    // create_dlc_draft 是基础能力，草稿人人可建，发布必须重新授权。
+    if (!this.#account.capabilities.includes("publish_dlc")) {
+      return Promise.resolve({
+        status: "permission_denied",
+        required_capability: "publish_dlc",
+        message: "发布课程需要 publish_dlc 能力：个人账户可创作草稿，发布前需完成创作者认证（product_spec §6.7）",
+      });
+    }
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) return Promise.resolve({ status: "invalid_input", message: "草稿不存在" });
+    if (draft.status !== "confirmed") {
+      return Promise.resolve({
+        status: "state_invalid",
+        message: `草稿状态是 ${draft.status}；请先在表单里确认内容，再发布`,
+      });
+    }
+    if (input.acknowledged_delist_terms !== true) {
+      return Promise.resolve({
+        status: "acknowledgement_required",
+        message: "发布前请确认知悉：学员获取的是长期授权，下架只影响新获取，不收回既有学员的访问权。",
+      });
+    }
+    if (input.summary.trim().length === 0) {
+      return Promise.resolve({ status: "invalid_input", message: "市场摘要不能为空" });
+    }
+    const n = STUDIO_STORE.nextId.dlc++;
+    const dlcId = `dlc.studio.mock.${n}`;
+    const dlc: MockStudioDlc = {
+      dlc_id: dlcId,
+      creator_id: draft.creator_id,
+      title: draft.title,
+      language: draft.language.split("-")[0].toLowerCase(),
+      summary: input.summary.trim(),
+      difficulty: input.difficulty,
+      tags: [...input.tags],
+      price_model: "free",
+      published_at: "2026-08-16T12:20:00Z",
+      delisted: false,
+      units: draft.units.map((u) => ({ ...u })),
+      cefr_level: draft.cefr_level,
+    };
+    STUDIO_STORE.published.set(dlcId, dlc);
+    draft.status = "published";
+    draft.updated_at = dlc.published_at;
+    // 发布联动市场（Mock 模拟服务端一次写入两条记录）：免费 DLC 立即可被学员获取。
+    MARKET_STORE.listings.set(dlcId, {
+      dlc_id: dlcId,
+      title: dlc.title,
+      summary: dlc.summary,
+      language: dlc.language,
+      difficulty: dlc.difficulty,
+      tags: [...dlc.tags],
+      price_model: "free",
+      publisher_name: this.#account.display_name,
+      published_at: dlc.published_at,
+      downloads: 0,
+    });
+    return Promise.resolve({ status: "published", dlc: dlcView(dlc) });
+  }
+
+  startRevision(dlcId: string): Promise<CreateStudioDraftOutcome> {
+    const dlc = STUDIO_STORE.published.get(dlcId);
+    if (!dlc || dlc.creator_id !== this.#account.account_id) {
+      return Promise.resolve({
+        status: "structure_invalid",
+        message: "没有找到你的这门已发布课程",
+      });
+    }
+    const draft: MockStudioDraft = {
+      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft++}`,
+      creator_id: dlc.creator_id,
+      status: "structured",
+      title: dlc.title,
+      language: dlc.language,
+      cefr_level: dlc.cefr_level,
+      units: dlc.units.map((u) => ({ ...u })),
+      structured_by: { provider_id: "provider.byok.deepseek", model_id: "deepseek-chat" },
+      updated_at: "2026-08-16T12:30:00Z",
+    };
+    STUDIO_STORE.drafts.set(draft.draft_id, draft);
+    return Promise.resolve({ status: "created", draft: draftView(draft) });
+  }
+
+  delistStudioDlc(dlcId: string): Promise<DelistStudioOutcome> {
+    const dlc = STUDIO_STORE.published.get(dlcId);
+    if (!dlc || dlc.creator_id !== this.#account.account_id) {
+      return Promise.resolve({ status: "not_found", message: "没有找到你的这门已发布课程" });
+    }
+    if (dlc.delisted) {
+      return Promise.resolve({ status: "delisted", dlc_id: dlc.dlc_id });
+    }
+    dlc.delisted = true;
+    const listing = MARKET_STORE.listings.get(dlcId);
+    if (listing) listing.delisted = true;
+    return Promise.resolve({ status: "delisted", dlc_id: dlc.dlc_id });
   }
 
   // -------------------------------------------------------------------------

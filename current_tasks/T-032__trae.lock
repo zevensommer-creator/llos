@@ -1,0 +1,7 @@
+{
+  "task_id": "T-032",
+  "owner": "trae",
+  "claimed_at": "2026-08-16T15:10:00+08:00",
+  "status": "doing",
+  "touched_paths": ["frontend/apps/web/", "frontend/packages/api-client/", "scripts/e2e-p6.mjs", "package.json", "TASKS.md"]
+}

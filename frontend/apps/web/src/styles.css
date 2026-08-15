@@ -814,3 +814,285 @@ body {
   padding: var(--llos-space-xs) var(--llos-space-sm);
   font-size: var(--llos-font-size-sm);
 }
+
+/* ---------------------------------------------------------------------------
+T-032: Studio 创作向导（product_spec §6）：左侧 BYOK/我的课程，右侧四步向导。
+--------------------------------------------------------------------------- */
+
+.studio-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--llos-space-lg);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .studio-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.studio-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-md);
+}
+
+.studio-panel {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-md);
+  background: var(--llos-color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}
+
+.studio-panel-title {
+  margin: 0;
+  font-size: var(--llos-font-size-md);
+}
+
+.studio-muted {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+  margin: 0;
+}
+
+.studio-warn {
+  margin-bottom: var(--llos-space-sm);
+}
+
+.studio-byok-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-xs);
+}
+
+.studio-byok-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--llos-space-xs);
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-byok-label {
+  font-weight: 600;
+}
+
+.studio-byok-key {
+  font-family: var(--llos-font-family-mono, monospace);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-sm);
+  padding: 0 var(--llos-space-xs);
+}
+
+.studio-byok-family {
+  color: var(--llos-color-ink-secondary);
+}
+
+.studio-byok-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-xs);
+  border-top: 1px solid var(--llos-color-border);
+  padding-top: var(--llos-space-sm);
+}
+
+.studio-byok-form .control {
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-byok-form .btn {
+  align-self: flex-start;
+}
+
+.studio-dlc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}
+
+.studio-dlc-list li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-xs);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-sm);
+}
+
+.studio-dlc--delisted {
+  opacity: 0.6;
+}
+
+.studio-dlc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studio-dlc-title {
+  font-weight: 600;
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-dlc-meta {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-dlc-actions {
+  display: flex;
+  gap: var(--llos-space-xs);
+}
+
+.studio-main {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-md);
+  background: var(--llos-color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-md);
+}
+
+.studio-steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--llos-space-xs);
+  margin: 0;
+  padding: 0;
+}
+
+.studio-step {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-pill);
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-ink-secondary);
+}
+
+.studio-step--active {
+  border-color: var(--llos-color-accent);
+  color: var(--llos-color-accent);
+  font-weight: 600;
+}
+
+.studio-form,
+.studio-review,
+.studio-sandbox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-md);
+}
+
+.studio-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--llos-space-md);
+}
+
+@media (max-width: 640px) {
+  .studio-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.studio-textarea {
+  width: 100%;
+  font-family: var(--llos-font-family-mono, monospace);
+  font-size: var(--llos-font-size-sm);
+  resize: vertical;
+}
+
+.studio-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--llos-space-sm);
+}
+
+.studio-units {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}
+
+.studio-unit {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-xs);
+}
+
+.studio-unit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.studio-unit-no {
+  font-size: var(--llos-font-size-sm);
+  font-weight: 600;
+}
+
+.studio-report,
+.studio-done {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}
+
+.studio-report-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.studio-report-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--llos-space-lg);
+  margin: 0;
+}
+
+.studio-report-facts div {
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-report-facts dt {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-report-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.studio-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--llos-space-xs);
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-ack input {
+  margin-top: 3px;
+}

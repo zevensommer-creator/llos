@@ -10,18 +10,20 @@ import { LearningJourney } from "./journeys/LearningJourney";
 import { WorkbenchJourney } from "./journeys/WorkbenchJourney";
 import { MarketJourney } from "./market/MarketJourney";
 import { ClassJourney } from "./classes/ClassJourney";
+import { StudioJourney } from "./studio/StudioJourney";
 import type { AccountKind } from "./hooks/useJourneyState";
 
-// Web（desktop_web）呈现五个视图：聊天 / 学习 / 市场 / 班级 / 电脑工作台。
+// Web（desktop_web）呈现六个视图：聊天 / 学习 / 市场 / 班级 / 创作 / 电脑工作台。
 // 教师助手为移动端旅程（CLIENT_SURFACE_SPEC §4），在 mobile app 呈现。
-// 市场与班级不是七态旅程（T-026/T-029）：它们是带交互流程的页面，独立渲染。
-type WebView = "chat" | "learning" | "market" | "classes" | "workbench";
+// 市场/班级/创作不是七态旅程（T-026/T-029/T-032）：它们是带交互流程的页面，独立渲染。
+type WebView = "chat" | "learning" | "market" | "classes" | "studio" | "workbench";
 
 const WEB_TABS: readonly { id: WebView; label: string }[] = [
   { id: "chat", label: "聊天" },
   { id: "learning", label: "学习" },
   { id: "market", label: "市场" },
   { id: "classes", label: "班级" },
+  { id: "studio", label: "创作" },
   { id: "workbench", label: "电脑工作台" },
 ];
 
@@ -107,6 +109,9 @@ function App() {
         ) : null}
         {view === "classes" ? (
           <ClassJourney client={client} onStartTraining={() => setView("learning")} />
+        ) : null}
+        {view === "studio" ? (
+          <StudioJourney client={client} onOpenMarket={() => setView("market")} />
         ) : null}
         {view === "workbench" ? (
           <JourneyHost journey="workbench" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
