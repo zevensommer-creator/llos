@@ -1,0 +1,17 @@
+{
+  "task_id": "T-028",
+  "owner": "trae",
+  "claimed_at": "2026-08-16T18:10:00+08:00",
+  "updated_at": "2026-08-16T19:00:00+08:00",
+  "status": "review",
+  "touched_paths": [
+    "core/src/class-assignments.ts",
+    "core/src/class-notices.ts",
+    "core/src/projections/class-stats.ts",
+    "core/src/classes.ts",
+    "core/src/entitlements.ts",
+    "core/src/index.ts",
+    "core/test/",
+    "TASKS.md"
+  ]
+}

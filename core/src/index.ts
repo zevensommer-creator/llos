@@ -56,6 +56,22 @@ export {
   type ClassInvitationIssueOptions,
 } from "./classes.js";
 export {
+  ClassAssignmentService,
+  AssignmentError,
+  type ClassAssignment,
+  type AssignListingInfo,
+  type AssignOptions,
+  type AssignDeps,
+  type PaidAssignMode,
+  type AssignmentErrorCode,
+  type UnlockState,
+} from "./class-assignments.js";
+export {
+  ClassNoticeService,
+  type ClassNotice,
+  type NoticeDeps,
+} from "./class-notices.js";
+export {
   SessionExecutor,
   EXECUTOR_ID,
   EXECUTOR_VERSION,
@@ -88,13 +104,21 @@ export {
   type EvidencePolicyView,
   type DecideMasteryInput,
 } from "./policy/mastery.js";
-export {
-  projectLearningCurve,
-  type CurvePoint,
-  type LearningCurve,
-} from "./projections/learning-curve.js";
+export { projectLearningCurve, type CurvePoint, type LearningCurve } from "./projections/learning-curve.js";
 export { rankWeakSpots, type WeakSpot } from "./projections/weak-spots.js";
 export { projectAdaptiveDifficulty, type DifficultyTier, type DifficultyHint } from "./projections/adaptive-difficulty.js";
+export {
+  projectClassStats,
+  CLASS_STATS_PROJECTOR_ID,
+  CLASS_STATS_PROJECTOR_VERSION,
+  type ClassStats,
+  type ClassStatsInput,
+  type ClassStatsSummary,
+  type MemberProgress,
+  type MemberDlcProgress,
+  type ClassWeakSpot,
+  type StatsAssignmentInput,
+} from "./projections/class-stats.js";
 export {
   toPronunciationObservations,
   toObservationRecordedEvents,

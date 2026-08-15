@@ -57,4 +57,17 @@ export class InMemoryEntitlementStore {
     }
     return doomed.length;
   }
+
+  // Unassigning one resource from a whole class drops that single resource
+  // across every account in the class channel; other class grants survive.
+  revokeResourceBySource(resourceRef: string, source: string): number {
+    let revoked = 0;
+    for (const [key, entitlement] of this.#entitlements) {
+      if (entitlement.resource_ref === resourceRef && entitlement.source === source) {
+        this.#entitlements.delete(key);
+        revoked += 1;
+      }
+    }
+    return revoked;
+  }
 }

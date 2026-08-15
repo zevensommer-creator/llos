@@ -93,11 +93,29 @@ export class ClassService {
   readonly #classes = new Map<string, ClassRecord>();
   readonly #members = new Map<string, Map<string, ClassMembership>>();
   readonly #invitations = new Map<string, ClassInvitationRecord>();
+  readonly #memberJoinedHandlers: ((membership: ClassMembership) => void)[] = [];
 
   constructor(deps: ClassServiceDeps) {
     this.#accounts = deps.accountStore;
     this.#entitlements = deps.entitlementStore;
     this.#clock = deps.clock;
+  }
+
+  // The assignment service registers here so members joining later receive
+  // the class's already-assigned free DLCs without the caller doing two steps.
+  onMemberJoined(handler: (membership: ClassMembership) => void): void {
+    this.#memberJoinedHandlers.push(handler);
+  }
+
+  // Creator gate for privileged class operations (assignments, notices).
+  // Public counterpart of #requireCreator + #requireClass + active check.
+  requireActiveClassFor(creatorId: string, classId: string): ClassRecord {
+    const record = this.#requireClass(classId);
+    this.#requireCreator(record, creatorId);
+    if (record.archived) {
+      throw new ClassError("class_archived", `class ${classId} is archived`);
+    }
+    return record;
   }
 
   createClass(actorId: string, options: CreateClassOptions): ClassRecord {
@@ -246,6 +264,7 @@ export class ClassService {
     });
     this.#members.get(record.class_id)?.set(accountId, membership);
     this.#invitations.set(code, Object.freeze({ ...invitation, uses: invitation.uses + 1 }));
+    for (const handler of this.#memberJoinedHandlers) handler(membership);
     return membership;
   }
 
