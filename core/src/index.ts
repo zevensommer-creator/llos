@@ -14,13 +14,32 @@ export {
 } from "./events/reducer.js";
 export {
   InMemoryAccountStore,
+  InMemoryCredentialStore,
+  CapabilityAdminError,
+  ADMIN_CAPABILITY,
   BASE_CAPABILITIES,
   CREATOR_CAPABILITIES,
   creatorCapabilitiesUnlocked,
+  grantCapabilityAs,
+  revokeCapabilityAs,
+  setVerificationAs,
   type Account,
   type VerificationStatus,
 } from "./identity.js";
 export { InMemoryEntitlementStore, type Entitlement } from "./entitlements.js";
+export {
+  InMemorySessionStore,
+  type SessionInfo,
+  type IssuedSession,
+  type SessionIssueOptions,
+} from "./sessions.js";
+export {
+  InMemoryInvitationStore,
+  InvitationError,
+  DEFAULT_INVITATION_CAPABILITY,
+  type InvitationRecord,
+  type InvitationIssueOptions,
+} from "./invitations.js";
 export {
   SessionExecutor,
   EXECUTOR_ID,

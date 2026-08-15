@@ -1,3 +1,5 @@
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+
 export const BASE_CAPABILITIES = [
   "chat",
   "learn",
@@ -13,6 +15,8 @@ export const CREATOR_CAPABILITIES = [
   "publish_material",
 ] as const;
 
+export const ADMIN_CAPABILITY = "manage_users";
+
 export type VerificationStatus = "unverified" | "teacher_verified" | "developer_verified";
 
 export interface Account {
@@ -23,6 +27,89 @@ export interface Account {
 
 export function creatorCapabilitiesUnlocked(verification: VerificationStatus): boolean {
   return verification === "teacher_verified" || verification === "developer_verified";
+}
+
+// Credential storage keeps only scrypt(password, salt) records; plaintext
+// passwords never enter the store. timingSafeEqual on the derived hash makes
+// verification time independent of where the first differing byte sits.
+export class InMemoryCredentialStore {
+  #records = new Map<string, { salt: Buffer; hash: Buffer }>();
+
+  set(accountId: string, password: string): void {
+    if (typeof password !== "string" || password.length === 0) {
+      throw new Error("password must be a non-empty string");
+    }
+    const salt = randomBytes(16);
+    const hash = scryptSync(password, salt, 64);
+    this.#records.set(accountId, { salt, hash });
+  }
+
+  verify(accountId: string, password: string): boolean {
+    const record = this.#records.get(accountId);
+    if (!record) return false;
+    const candidate = scryptSync(password, record.salt, 64);
+    return candidate.length === record.hash.length && timingSafeEqual(candidate, record.hash);
+  }
+
+  has(accountId: string): boolean {
+    return this.#records.has(accountId);
+  }
+
+  delete(accountId: string): boolean {
+    return this.#records.delete(accountId);
+  }
+}
+
+export class CapabilityAdminError extends Error {
+  readonly code = "capability_admin_denied";
+  constructor(message: string) {
+    super(message);
+    this.name = "CapabilityAdminError";
+  }
+}
+
+function requireCapability(
+  store: InMemoryAccountStore,
+  actorId: string,
+  capability: string,
+): void {
+  if (!store.hasCapability(actorId, capability)) {
+    throw new CapabilityAdminError(
+      `account ${actorId} lacks ${capability} (product_spec §2.4: server-side re-authorization)`,
+    );
+  }
+}
+
+// The store primitives stay policy-free; every admin operation goes through
+// these gated wrappers so no write path can skip the manage_users check.
+export function grantCapabilityAs(
+  store: InMemoryAccountStore,
+  actorId: string,
+  targetId: string,
+  capability: string,
+): Account {
+  requireCapability(store, actorId, ADMIN_CAPABILITY);
+  return store.grant(targetId, capability);
+}
+
+export function revokeCapabilityAs(
+  store: InMemoryAccountStore,
+  actorId: string,
+  targetId: string,
+  capability: string,
+): Account {
+  requireCapability(store, actorId, ADMIN_CAPABILITY);
+  return store.revoke(targetId, capability);
+}
+
+export function setVerificationAs(
+  store: InMemoryAccountStore,
+  actorId: string,
+  targetId: string,
+  verification: VerificationStatus,
+): Account {
+  requireCapability(store, actorId, ADMIN_CAPABILITY);
+  return store.setVerification(targetId, verification);
 }
 
 export class InMemoryAccountStore {
