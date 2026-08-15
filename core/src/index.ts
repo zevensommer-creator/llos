@@ -21,3 +21,25 @@ export {
   type VerificationStatus,
 } from "./identity.js";
 export { InMemoryEntitlementStore, type Entitlement } from "./entitlements.js";
+export {
+  SessionExecutor,
+  EXECUTOR_ID,
+  EXECUTOR_VERSION,
+  addInterval,
+  type ExecutionState,
+  type ExecutorDeps,
+  type SessionMeta,
+  type ResponseInput,
+  type EvaluatorFn,
+  type EvaluatorResult,
+  type ExecStepView,
+} from "./runtime/executor.js";
+export { ExecutorError, executorErrorCodes, type ExecutorErrorCode } from "./runtime/errors.js";
+export {
+  scheduleFsrsReview,
+  replayCard,
+  FSRS_SCHEDULER_ID,
+  FSRS_GATE_CONFIDENCE,
+  type ReviewFact,
+  type FsrsScheduleResult,
+} from "./scheduler/fsrs.js";

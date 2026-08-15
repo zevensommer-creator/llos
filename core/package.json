@@ -10,7 +10,8 @@
     "test": "node --test \"test/*.test.js\""
   },
   "dependencies": {
-    "@llos/contracts": "workspace:*"
+    "@llos/contracts": "workspace:*",
+    "ts-fsrs": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
