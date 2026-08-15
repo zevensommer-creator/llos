@@ -10,7 +10,7 @@ import type { ProviderAdapter, ProviderRequest, ProviderRegistry, ProviderResult
 // 消费 material.generation 输出），真实 HTTP adapter 留待后续任务。
 
 export const BYOK_CAPABILITY_ID = "material.generation";
-export const BYOK_OPERATIONS = ["structure", "generate"] as const;
+export const BYOK_OPERATIONS = ["structure", "generate", "ocr"] as const;
 
 const FAMILY_DISPLAY: Record<string, string> = {
   deepseek: "DeepSeek",
@@ -56,7 +56,7 @@ export function byokDescriptorFor(entry: ByokEntryRef): unknown {
         operations: [...BYOK_OPERATIONS],
         languages: "*",
         quality_tiers: ["standard", "premium"],
-        input_media_types: ["text/plain"],
+        input_media_types: ["text/plain", "image/png"],
         supports_streaming: false,
         supports_batch: true,
         supports_cancellation: true,

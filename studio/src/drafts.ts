@@ -31,6 +31,8 @@ export interface StudioDraft {
   material_pack: MaterialPack;
   manifest: DLCManifest;
   structured_by: { provider_id: string; model_id?: string };
+  /** 图片摄入时记录 OCR 所用 provider（格式解析步骤溯源）。 */
+  ocr_by?: { provider_id: string; model_id?: string };
   /** 修订草稿的已发布基线（发布时用于版本判定 §6.7）。 */
   base?: DraftBase;
   created_at: string;
@@ -116,6 +118,7 @@ export class StudioDrafts {
         createdAt: now,
       }),
       structured_by: structured.structured_by,
+      ...(structured.ocr_by ? { ocr_by: structured.ocr_by } : {}),
       created_at: now,
       updated_at: now,
     };

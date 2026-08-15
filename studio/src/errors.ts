@@ -2,6 +2,7 @@ export type StudioErrorCode =
   | "capability_missing"
   | "ingest_source_empty"
   | "structure_output_invalid"
+  | "ocr_output_invalid"
   | "draft_not_found"
   | "not_draft_owner"
   | "draft_state_invalid"
