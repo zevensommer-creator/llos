@@ -1,7 +1,0 @@
-{
-  "task_id": "T-031",
-  "owner": "trae",
-  "claimed_at": "2026-08-16T13:20:00+08:00",
-  "status": "doing",
-  "touched_paths": ["studio/", "market/src/market.ts", "market/src/index.ts", "market/test/", "package.json"]
-}
