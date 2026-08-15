@@ -60,8 +60,13 @@ export {
   type LearningCurve,
 } from "./projections/learning-curve.js";
 export { rankWeakSpots, type WeakSpot } from "./projections/weak-spots.js";
+export { projectAdaptiveDifficulty, type DifficultyTier, type DifficultyHint } from "./projections/adaptive-difficulty.js";
 export {
-  projectAdaptiveDifficulty,
-  type DifficultyTier,
-  type DifficultyHint,
-} from "./projections/adaptive-difficulty.js";
+  toPronunciationObservations,
+  toObservationRecordedEvents,
+  mapAbstentionReason,
+  SPEECH_BRIDGE_ID,
+  SPEECH_BRIDGE_VERSION,
+  type SpeechBridgeContext,
+  type ObservationEventContext,
+} from "./speech/bridge.js";

@@ -44,7 +44,7 @@
 | T-020 | P2c：掌握判定引擎 + 学习曲线/薄弱点/难度投影 + CLI 完整循环 | done | trae | 高 | T-019 | 已合并 main（8d9cd51 + 6d3db5f）；core/src/policy/mastery（Evidence Policy 确定性解释器，五态判定 not_yet/provisional/learned/uncertain/lapsed + reason codes + supersedes 链 + 保留期延迟成功检测）+ 三投影（curve 按天分桶/weak-spots 可解释排序含逾期复习/difficulty tier）+ scripts/demo-loop.mjs（`pnpm demo:loop`：编译→两轮执行→判定→投影→FSRS，37 事件闭环）；24 新测试（mastery 12 + projections 12）；全 workspace 161 测试 + typecheck 绿；锁已释放 |
 | T-021 | P3a：发音证据管线骨架 + 质量门/弃权协议 | done | trae | 高 | T-020 | 已合并 main（93ac11e + 7fbde44）；@llos/speech 端口化管线（AudioAnalyzer/VAD/ASR/G2P/Aligner + Fake 引擎零推理成本）；德语画像 de-DE 0.1.0（Stage 0 保守阈值：SNR≥15/完整性≥0.8/对齐覆盖≥0.9）+ G2P 词典 25 词 + 规则回退（ich/ach 分辨、词尾清化、长短元音启发，全部标 uncertain）；PronunciationAssessment 全路径契约组装（45 测试：弃权矩阵 §8.3 ×9 + 质量门 ×10 + G2P ×10 + 匹配 ×7 + 编排确定性/不误拒 ×9）；后端 5 包 200 测试 + typecheck 绿；锁已释放。声学重引擎适配器留后续 |
 | T-022 | P3b：GOP/韵律证据 + 德语校准器 + 四专项诊断 | done | trae | 高 | T-021 | 已合并 main（5467542 + 3d513ee，fast-forward）；GopPort/ProsodyPort（Praat 形状：元音时长/F1F2/F0/强度/发音速率）+ Fake 引擎扩展；共享音素表 phones.ts（长短元音类别/前后圆唇对照/清浊尾映射/Stage 0 参考）；四专项诊断（vowel_quantity/front_rounded_vowel/ich_ach_laut/final_devoicing）+ 通用替换回退，全部带 feedback_key 与教学优先级；可接受变体层（r 实现互通/词首 China ch/词尾 -ig→k/-er→ɐ）；证据融合方向敏感（GOP 指控+声学支持标准音→弃权；双证一致→confirmed；单证→suspected；低置信→弃权）；德语校准器三维度（维度级弃权保留）；27 新测试（FCR ≤5% 标注语料门）；全 workspace 8 包 250 测试 + typecheck 绿；锁已释放。遗留 follow-up：阈值待真实声学数据校准（Stage 0 保守值） |
-| T-023 | P3c：发音证据入 Core 闭环 + Piper TTS Provider | doing | trae | 高 | T-022 | PronunciationAssessment → LearningObservation → 学习事件桥接；gateway 注册 Piper TTS Provider（仅示范朗读）；指标 harness（对齐成功率/弃权率/误纠正率 vs 基线 §13.2 门槛） |
+| T-023 | P3c：发音证据入 Core 闭环 + Piper TTS Provider | review | trae | 高 | T-022 | 发音证据入 Core 闭环完成待审：core/src/speech/bridge.ts（assessment→观察→observation.recorded 事件，claim 绑定归 DLC，弃权原因码→闭合枚举确定性映射）；gateway 注册 Piper TTS（provider.tts.piper-local，capability 限 tts.demo_reading，内容寻址缓存 Fake adapter，非母语标准红线写入 descriptor）；scripts/speech-metrics.mjs（§13.2 四门全过：precision 1.0/FCR 0.0/对齐 1.0/单证只 suspected）；12 新测试（bridge 7 + piper 5）；全 workspace 262 测试 + typecheck 绿 |
 
 ---
 
@@ -109,6 +109,7 @@
 | 2026-08-16 | TRAE | T-022 完成 → review（5467542）：GOP/韵律端口 + 四专项诊断 + 可接受变体层 + 校准器（27 新测试，FCR ≤5% 门）；证据融合方向敏感（GOP 指控+声学背书→弃权；双证一致→confirmed；单证→suspected）；全 workspace 8 包 250 测试 + typecheck 绿；待 Human 确认合并 feature/trae-speech-gop |
 | 2026-08-16 | Human | 确认 T-022 合并：feature/trae-speech-gop → main（5467542 + 3d513ee，fast-forward）；T-022 置 done，锁已释放；T-023 开工 |
 | 2026-08-16 | TRAE | T-023 认领（P3c 发音证据入 Core 闭环 + Piper TTS Provider）→ doing；分支 feature/trae-speech-core-loop；范围 core/src/（发音观察桥接）+ gateway/src/（Piper descriptor + 示范朗读 adapter）+ scripts/（指标 harness）；桥接层原则：speech 输出证据，Core 确定性转换，维度弃权→低置信观察，不伪造测量置信度 |
+| 2026-08-16 | TRAE | T-023 完成 → review：core/src/speech 桥接（scored→scalar 观察/abstained→显式弃权/无 claim 绑定跳过/弃权原因码 9 类映射闭合枚举/observation.recorded 事件幂等键去重/经 reducer 直接流转）；gateway Piper TTS（descriptor 契约校验+注册，capability 仅 tts.demo_reading，Fake adapter 内容寻址缓存，§10"非母语教师标准"红线写入 description）；`pnpm metrics:speech` §13.2 Stage 0 四门全过（高置信精确率 1.0≥0.9 / FCR 0.0≤0.05 / 对齐成功率 1.0≥0.95 / 单证据只 suspected）；12 新测试，全 workspace 262 测试 + typecheck 绿；待 Human 确认合并 feature/trae-speech-core-loop |
 
 ---
 

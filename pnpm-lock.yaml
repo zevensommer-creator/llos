@@ -14,6 +14,9 @@ importers:
       '@llos/core':
         specifier: workspace:*
         version: link:core
+      '@llos/speech':
+        specifier: workspace:*
+        version: link:speech
 
   compiler:
     dependencies:

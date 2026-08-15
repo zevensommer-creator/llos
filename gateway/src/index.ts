@@ -17,3 +17,10 @@ export {
   type FailedAttempt,
 } from "./gateway.js";
 export { FakeProvider, type FakeProviderOptions } from "./fake-provider.js";
+export {
+  PIPER_TTS_DESCRIPTOR,
+  PIPER_TTS_PROVIDER_ID,
+  FakeTTSProvider,
+  type TtsSynthesisInput,
+  type TtsSynthesisOutput,
+} from "./piper-tts.js";
