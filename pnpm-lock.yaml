@@ -6,7 +6,14 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@llos/compiler':
+        specifier: workspace:*
+        version: link:compiler
+      '@llos/core':
+        specifier: workspace:*
+        version: link:core
 
   compiler:
     dependencies:

@@ -7,10 +7,15 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "contracts:generate": "pnpm --filter @llos/contracts generate"
+    "contracts:generate": "pnpm --filter @llos/contracts generate",
+    "demo:loop": "node scripts/demo-loop.mjs"
   },
   "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@llos/compiler": "workspace:*",
+    "@llos/core": "workspace:*"
   }
 }

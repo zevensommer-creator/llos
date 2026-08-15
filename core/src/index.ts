@@ -43,3 +43,25 @@ export {
   type ReviewFact,
   type FsrsScheduleResult,
 } from "./scheduler/fsrs.js";
+export {
+  decideMastery,
+  toMasteryDecisionEvent,
+  MASTERY_ESTIMATOR_ID,
+  MASTERY_REDUCER_VERSION,
+  durationToMs,
+  type MasteryStatus,
+  type MasteryDecision,
+  type EvidencePolicyView,
+  type DecideMasteryInput,
+} from "./policy/mastery.js";
+export {
+  projectLearningCurve,
+  type CurvePoint,
+  type LearningCurve,
+} from "./projections/learning-curve.js";
+export { rankWeakSpots, type WeakSpot } from "./projections/weak-spots.js";
+export {
+  projectAdaptiveDifficulty,
+  type DifficultyTier,
+  type DifficultyHint,
+} from "./projections/adaptive-difficulty.js";
