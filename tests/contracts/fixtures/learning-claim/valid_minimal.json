@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.2.0",
+  "claim_ref": "dlc.de.fsi-construction:claim/vowel_quantity",
+  "dlc_ref": {
+    "id": "dlc.de.fsi-construction",
+    "version": "0.2.0",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "version": "1.0.0",
+  "descriptor": {
+    "display_name": "Long/short vowel contrast in read-aloud speech",
+    "description": "Produces the German vowel length contrast correctly in controlled read-aloud contexts."
+  },
+  "claims_transfer": false
+}

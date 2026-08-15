@@ -1,0 +1,132 @@
+{
+  "schema_version": "0.2.0",
+  "ir_id": "session.de.vowel-length.001",
+  "ir_version": "0.2.0",
+  "ir_kind": "executable_session",
+  "language": "de-DE",
+  "created_at": "2026-08-15T12:00:00Z",
+  "compiler": {
+    "dlc_id": "dlc.de.fsi-construction",
+    "dlc_version": "0.2.0",
+    "runtime_version": "0.2.0"
+  },
+  "source_refs": [
+    {
+      "uri": "artifact://materials/de-minimal-pairs/snapshot/1",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "media_type": "application/json",
+      "schema_id": "material-pack",
+      "schema_version": "0.2.0"
+    }
+  ],
+  "random_seed": 42,
+  "claims": [
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/vowel_quantity",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Long/short vowel contrast in read-aloud speech"
+      }
+    }
+  ],
+  "program": {
+    "session_policy": {
+      "max_duration_ms": 900000,
+      "max_provider_cost_usd": 0,
+      "max_iterations": 40,
+      "on_provider_failure": "fallback",
+      "offline_allowed": true
+    },
+    "entry_step_id": "s1",
+    "steps": [
+      {
+        "step_id": "s1",
+        "primitive": "present",
+        "display_mode_ref": "fsi-construction.mode-read-aloud",
+        "present": {
+          "prompt": "Bitte lies den Satz laut vor.",
+          "reference_text": "Wir bieten Ihnen diesen Termin an."
+        },
+        "next": "s2"
+      },
+      {
+        "step_id": "s2",
+        "primitive": "capture_audio",
+        "capture": {
+          "timeout_ms": 30000,
+          "max_recording_ms": 15000
+        },
+        "next": "s3"
+      },
+      {
+        "step_id": "s3",
+        "primitive": "evaluate",
+        "evaluate": {
+          "evaluator": {
+            "id": "speech.gop-german",
+            "version": "0.2.0",
+            "kind": "rule"
+          },
+          "metric_ref": "dlc.de.fsi-construction:metric/vowel_quantity_accuracy",
+          "minimum_measurement_confidence": 0.8
+        },
+        "next": "s4"
+      },
+      {
+        "step_id": "s4",
+        "primitive": "feedback",
+        "feedback": {
+          "template_ref": {
+            "uri": "artifact://dlc/de/fsi-construction/feedback/vowel_quantity",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "media_type": "application/json"
+          }
+        },
+        "next": "s5"
+      },
+      {
+        "step_id": "s5",
+        "primitive": "schedule",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/vowel_quantity"
+        ],
+        "schedule": {
+          "scheduler": "rule_based",
+          "interval": "PT24H"
+        },
+        "next": "s6"
+      },
+      {
+        "step_id": "s6",
+        "primitive": "stop",
+        "stop": {
+          "outcome": "success"
+        }
+      }
+    ],
+    "stop_conditions": [
+      {
+        "fact": "session.elapsed_ms",
+        "operator": "gte",
+        "value": {
+          "kind": "int",
+          "int": 900000
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "input_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "passes": [
+      {
+        "id": "activity.codegen",
+        "version": "0.2.0",
+        "status": "completed"
+      }
+    ],
+    "compiled_at": "2026-08-15T12:00:00Z"
+  }
+}

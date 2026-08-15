@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.2.0",
+  "record_type": "work_item",
+  "work_id": "work.material.annotate.0001",
+  "workflow_id": "workflow.material.import.0001",
+  "work_type": "material.annotate",
+  "contract_version": "0.1.0",
+  "created_at": "2026-08-14T12:00:00Z",
+  "input_artifact_refs": [
+    {
+      "uri": "artifact://imports/hotel-dialogue/1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "media_type": "text/plain",
+      "immutable": true
+    }
+  ],
+  "required_capabilities": [
+    {
+      "capability": "llm.structured_generate",
+      "required": true,
+      "quality_floor": "economy",
+      "privacy_class": "local_preferred",
+      "output_schema_ref": "artifact://schemas/material-annotation/0.1.0"
+    }
+  ],
+  "budget": {
+    "max_calls": 2,
+    "max_input_tokens": 8000,
+    "max_output_tokens": 4000,
+    "max_latency_ms": 15000,
+    "max_cost_usd": 0.02
+  },
+  "authority": {
+    "allowed_tools": [
+      "artifact.read",
+      "artifact.write_scoped"
+    ],
+    "allowed_capabilities": [
+      "llm.structured_generate"
+    ],
+    "data_scopes": [
+      "licensed_material"
+    ],
+    "denied_actions": [
+      "write_user_database",
+      "write_learning_event",
+      "change_contract",
+      "change_rubric",
+      "increase_budget",
+      "select_provider_directly",
+      "spawn_unbounded_work",
+      "exfiltrate_data"
+    ]
+  },
+  "output_schema_ref": "artifact://schemas/material-annotation/0.1.0",
+  "idempotency_key": "material.annotate:hotel-dialogue:1",
+  "random_seed": 42,
+  "instructions": "Annotate communicative intents and construction candidates. Do not rewrite source text."
+}

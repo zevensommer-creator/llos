@@ -1,0 +1,157 @@
+{
+  "schema_version": "0.2.0",
+  "dlc_id": "dlc.de.fsi-construction",
+  "version": "0.2.0",
+  "display_name": "German Intensive Construction Compiler",
+  "description": "Compiles semantic scenarios into intensive German drills using construction and valency constraints.",
+  "compatibility": {
+    "core_api": ">=0.2.0 <0.3.0",
+    "compiler_runtime": ">=0.2.0 <0.3.0",
+    "minimum_contracts": {
+      "learning-ir": "0.2.0",
+      "material-pack": "0.2.0",
+      "evidence-policy": "0.2.0"
+    }
+  },
+  "supported_languages": [
+    {
+      "language": "de-DE",
+      "release_tier": "primary",
+      "language_profile_ref": "artifact://language-profiles/de-DE/0.2.0",
+      "level_refs": [
+        {
+          "scale_ref": "scale.cefr",
+          "level_ref": "A1",
+          "version": "2001.0.0"
+        }
+      ]
+    }
+  ],
+  "theory_profile": [
+    {
+      "id": "construction-grammar",
+      "name": "Construction Grammar",
+      "role": "primary",
+      "operational_claims": [
+        {
+          "claim_id": "construction-as-learning-unit",
+          "compiler_effect": "Generate activities around form-meaning pair identifiers rather than isolated rules.",
+          "test_ref": "test://dlc/construction-unit"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/vowel_quantity",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "display_name": "Long/short vowel contrast"
+    }
+  ],
+  "accepted_material_schemas": [
+    "urn:language-learning-platform:schema:material-pack:0.2.0"
+  ],
+  "material_request_templates": [
+    {
+      "id": "req.fresh-scenario",
+      "template_ref": "artifact://dlc/dlc.de.fsi-construction/requests/fresh-scenario",
+      "trigger": "on_material_shortage"
+    }
+  ],
+  "missing_input_handling": "request_material",
+  "degradation_policy": {
+    "allowed": true,
+    "on_provider_failure": "offline_fallback",
+    "on_capability_missing": "pause_session",
+    "offline_allowed": true
+  },
+  "evidence_policies": [
+    {
+      "policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "version": "0.1.0",
+      "policy_artifact": "artifact://dlc/dlc.de.fsi-construction/policies/retention-transfer/0.1.0"
+    }
+  ],
+  "output_ir": {
+    "schema_id": "urn:language-learning-platform:schema:learning-ir:0.2.0",
+    "version_range": ">=0.2.0 <0.3.0",
+    "kinds": [
+      "pedagogical",
+      "executable_session"
+    ]
+  },
+  "passes": [
+    {
+      "id": "semantic.lowering",
+      "version": "0.2.0",
+      "stage": "semantic_lowering",
+      "entrypoint": "passes.semantic_lowering:run",
+      "input_kinds": [
+        "material_pack"
+      ],
+      "output_kind": "semantic_ir",
+      "determinism": "deterministic",
+      "failure_policy": "fail_compilation"
+    }
+  ],
+  "capability_requirements": [
+    {
+      "id": "surface.realization",
+      "capability": "llm.structured_generate",
+      "required": false,
+      "languages": [
+        "de-DE"
+      ],
+      "privacy_class": "local_preferred",
+      "quality_floor": "economy",
+      "output_schema_ref": "artifact://schemas/surface-realization/0.2.0"
+    }
+  ],
+  "permissions": [
+    "material.read",
+    "learner_state.read_projection",
+    "gateway.request",
+    "artifact.read",
+    "artifact.write_scoped"
+  ],
+  "emitted_event_types": [
+    "learning.session_started",
+    "learning.session_completed",
+    "learning.session_aborted",
+    "activity.presented",
+    "learner.response_submitted",
+    "observation.recorded",
+    "learning.evidence_recorded",
+    "mastery.decision_made",
+    "review.scheduled",
+    "feedback.presented",
+    "learner.correction_accepted",
+    "composition.upgraded"
+  ],
+  "budgets": {
+    "compile_timeout_ms": 30000,
+    "max_provider_calls": 2,
+    "max_cost_usd": 0.02,
+    "max_memory_mb": 512,
+    "max_output_bytes": 5000000
+  },
+  "quality_gates": [
+    {
+      "id": "ir.schema.valid",
+      "stage": "compile",
+      "severity": "error",
+      "validator_ref": "validator://learning-ir/0.2.0"
+    }
+  ],
+  "package": {
+    "artifact_uri": "artifact://dlc/dlc.de.fsi-construction/0.2.0.zip",
+    "media_type": "application/zip",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "size_bytes": 102400
+  },
+  "license": {
+    "spdx_id": "Apache-2.0",
+    "commercial_use": "allowed"
+  }
+}

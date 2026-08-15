@@ -1,0 +1,105 @@
+{
+  "schema_version": "0.2.0",
+  "provider_id": "provider.asr.faster-whisper-cpu",
+  "version": "0.1.0",
+  "display_name": "Local faster-whisper CPU",
+  "execution": {
+    "mode": "local",
+    "adapter_entrypoint": "providers.faster_whisper:Provider",
+    "network_required": false,
+    "credential_ref_names": [],
+    "sandbox_required": true
+  },
+  "capabilities": [
+    {
+      "capability_id": "asr.transcribe",
+      "kind": "asr",
+      "operations": [
+        "transcribe",
+        "language_detect"
+      ],
+      "languages": [
+        "de-DE",
+        "en-US",
+        "fr-FR",
+        "ru-RU"
+      ],
+      "quality_tiers": [
+        "economy"
+      ],
+      "input_media_types": [
+        "audio/wav"
+      ],
+      "supports_streaming": false,
+      "supports_batch": true,
+      "supports_cancellation": true,
+      "supports_seed": false,
+      "model_refs": [
+        "faster-whisper-small-int8"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "model_id": "faster-whisper-small-int8",
+      "model_version": "pinned-by-lockfile",
+      "artifact_or_service_ref": "artifact://models/faster-whisper-small-int8",
+      "languages": "*",
+      "precision": "int8",
+      "status": "candidate",
+      "license_ref": "https://github.com/SYSTRAN/faster-whisper/blob/master/LICENSE"
+    }
+  ],
+  "hardware_requirements": {
+    "architectures": [
+      "x86_64"
+    ],
+    "minimum_cpu_cores": 2,
+    "minimum_ram_mb": 4096,
+    "gpu": "none",
+    "disk_mb": 2000
+  },
+  "limits": {
+    "max_concurrency": 1,
+    "request_timeout_ms": 120000,
+    "max_audio_ms": 120000
+  },
+  "cost_model": {
+    "currency": "USD",
+    "effective_at": "2026-08-14T00:00:00Z",
+    "components": [
+      {
+        "unit": "compute_second",
+        "price": 0,
+        "notes": "Host cost is metered separately by deployment."
+      }
+    ]
+  },
+  "privacy": {
+    "data_leaves_host": false,
+    "processing_regions": [],
+    "retention": "none",
+    "training_use": "none",
+    "supported_data_classes": [
+      "public",
+      "internal",
+      "personal_text",
+      "personal_audio"
+    ]
+  },
+  "license": {
+    "code_spdx_id": "MIT",
+    "model_license_status": "separate_reviewed",
+    "model_license_refs": [
+      "artifact://licenses/faster-whisper-small-int8"
+    ],
+    "commercial_use": "allowed"
+  },
+  "health": {
+    "check_kind": "synthetic_request",
+    "check_target": "fixture://audio/de/silence-plus-word.wav",
+    "timeout_ms": 10000,
+    "failure_threshold": 3,
+    "recovery_threshold": 2
+  }
+}

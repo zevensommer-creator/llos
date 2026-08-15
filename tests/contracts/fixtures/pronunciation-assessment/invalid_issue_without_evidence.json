@@ -1,0 +1,162 @@
+{
+  "schema_version": "0.2.0",
+  "assessment_id": "assessment.de.0001",
+  "session_id": "session.0001",
+  "activity_id": "activity.read-aloud.0001",
+  "created_at": "2026-08-14T12:00:10Z",
+  "language": "de-DE",
+  "mode": "read_aloud",
+  "status": "partial",
+  "audio_ref": {
+    "uri": "artifact://audio/session.0001/utterance.0001.wav",
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "media_type": "audio/wav",
+    "duration_ms": 2800
+  },
+  "audio_quality": {
+    "status": "passed",
+    "speech_duration_ms": 2400,
+    "snr_db": 24.5,
+    "clipping_ratio": 0,
+    "silence_ratio": 0.14,
+    "channel_count": 1,
+    "sample_rate_hz": 16000,
+    "quality_flags": []
+  },
+  "reference": {
+    "reference_type": "exact_text",
+    "text": "Wir bieten Ihnen diesen Termin an.",
+    "normalized_text": "wir bieten ihnen diesen termin an",
+    "pronunciation_graph_ref": {
+      "uri": "artifact://pronunciation-graphs/de/utterance.0001",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "media_type": "application/json"
+    },
+    "language_profile_ref": "artifact://language-profiles/de-DE/0.1.0",
+    "acceptable_variant_policy_version": "0.1.0"
+  },
+  "recognition": {
+    "status": "completed",
+    "hypotheses": [
+      {
+        "text": "Wir bieten Ihnen diesen Termin an.",
+        "rank": 1,
+        "confidence": 0.94
+      }
+    ],
+    "content_match": {
+      "completeness": 1,
+      "insertions": 0,
+      "deletions": 0,
+      "substitutions": 0
+    }
+  },
+  "alignment": {
+    "status": "completed",
+    "coverage": 1,
+    "mean_confidence": 0.88
+  },
+  "dimensions": [
+    {
+      "id": "vowel_quantity",
+      "status": "scored",
+      "score": 74,
+      "confidence": 0.86,
+      "evidence_refs": [
+        "ev.duration.bieten.i"
+      ]
+    },
+    {
+      "id": "word_stress",
+      "status": "abstained",
+      "confidence": 0.42,
+      "evidence_refs": [],
+      "abstention_ref": "abs.stress.low-confidence"
+    }
+  ],
+  "words": [],
+  "evidence": [
+    {
+      "evidence_id": "ev.duration.bieten.i",
+      "kind": "duration",
+      "value": {
+        "kind": "number",
+        "number": 71
+      },
+      "unit": "ms",
+      "confidence": 0.91,
+      "interval": {
+        "start_ms": 420,
+        "end_ms": 491
+      },
+      "target_ref": "phone.bieten.i-long",
+      "source_component_ref": "component.praat.duration"
+    }
+  ],
+  "issues": [
+    {
+      "issue_id": "issue.vowel-quantity.0001",
+      "category": "vowel_quantity",
+      "status": "confirmed",
+      "severity": "medium",
+      "target": "iː",
+      "observed": "duration and quality closer to short-vowel reference",
+      "location": {
+        "start_ms": 420,
+        "end_ms": 491
+      },
+      "confidence": 0.86,
+      "evidence_refs": [],
+      "feedback_key": "de.vowel_quantity.lengthen_and_hold_quality",
+      "pedagogical_priority": 80
+    }
+  ],
+  "abstentions": [
+    {
+      "abstention_id": "abs.stress.low-confidence",
+      "scope": "dimension",
+      "target_ref": "word_stress",
+      "reason_code": "evidence_conflict",
+      "message": "F0, intensity and duration evidence do not agree strongly enough to diagnose word stress."
+    }
+  ],
+  "calibration": {
+    "language_profile_id": "language-profile.de-DE",
+    "language_profile_version": "0.1.0",
+    "calibrator_id": "calibrator.de.read-aloud",
+    "calibrator_version": "0.1.0",
+    "threshold_set_version": "0.1.0",
+    "domain_status": "in_domain",
+    "learner_l1_group": "zh-CN",
+    "device_class": "consumer-headset"
+  },
+  "component_versions": [
+    {
+      "component_ref": "component.mfa.german",
+      "role": "alignment",
+      "provider_id": "provider.mfa.local",
+      "model_id": "german-mfa-acoustic",
+      "model_version": "3.0.0"
+    },
+    {
+      "component_ref": "component.praat.duration",
+      "role": "prosody",
+      "provider_id": "provider.parselmouth.local",
+      "model_id": "praat-feature-rules",
+      "model_version": "0.1.0"
+    }
+  ],
+  "provenance": {
+    "pipeline_version": "0.1.0",
+    "input_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "random_seed": 42,
+    "started_at": "2026-08-14T12:00:07Z",
+    "finished_at": "2026-08-14T12:00:10Z",
+    "usage": {
+      "latency_ms": 3000,
+      "cpu_seconds": 4.2,
+      "gpu_seconds": 0,
+      "cost_usd": 0
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": "0.2.0",
+  "record_type": "work_result",
+  "work_id": "work.explain.001",
+  "status": "completed",
+  "finished_at": "2026-08-15T12:05:00Z",
+  "artifacts": [
+    {
+      "uri": "artifact://agent-work/work.explain.001/output",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "media_type": "application/json"
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evidence.001",
+      "kind": "model_result",
+      "source_ref": {
+        "uri": "artifact://agent-work/work.explain.001/trace",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "claim": "The explanation cites the observed vowel-length minimal pair.",
+      "confidence": 0.9
+    }
+  ],
+  "confidence": 0.9,
+  "usage": {
+    "calls": 1,
+    "input_tokens": 800,
+    "output_tokens": 200,
+    "audio_ms": 0,
+    "latency_ms": 1500,
+    "cost_usd": 0.001
+  },
+  "diagnostics": [],
+  "provider_trace": [
+    {
+      "trace_id": "trace.001",
+      "capability": "error.explanation",
+      "provider_id": "provider.llm.mock",
+      "model_id": "mock-model",
+      "model_version": "1.0.0",
+      "request_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "response_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "started_at": "2026-08-15T12:04:58Z",
+      "latency_ms": 1500,
+      "status": "completed"
+    }
+  ]
+}

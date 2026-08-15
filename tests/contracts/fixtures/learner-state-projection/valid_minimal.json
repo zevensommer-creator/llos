@@ -1,0 +1,49 @@
+{
+  "schema_version": "0.2.0",
+  "projection_id": "projection.learner-001.vowel-quantity.001",
+  "learner_ref": "learner.001",
+  "claim_ref": "dlc.de.fsi-construction:claim/vowel_quantity",
+  "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+  "evidence_policy_version": "0.1.0",
+  "evidence_state": "supported",
+  "evidence_counts": {
+    "valid": 5,
+    "supporting": 5,
+    "contradicting": 0,
+    "abstained": 1,
+    "below_confidence_gate": 0
+  },
+  "session_coverage": {
+    "distinct_sessions": 3,
+    "first_observed_at": "2026-08-15T10:00:00Z",
+    "last_valid_observation_at": "2026-08-15T12:00:00Z"
+  },
+  "independence": {
+    "unassisted": 4,
+    "hinted": 1,
+    "retried": 0,
+    "answer_revealed": 0
+  },
+  "diversity": {
+    "distinct_material_snapshots": 2,
+    "distinct_tasks": 5
+  },
+  "evaluator_summary": {
+    "abstention_count": 1,
+    "evaluators": [
+      {
+        "id": "speech.gop-german",
+        "version": "0.2.0",
+        "kind": "rule"
+      }
+    ]
+  },
+  "reducer": {
+    "id": "core.reducer.learning",
+    "version": "0.1.0",
+    "event_sequence_start": 1,
+    "event_sequence_end": 12,
+    "input_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "projected_at": "2026-08-15T12:00:01Z"
+}
