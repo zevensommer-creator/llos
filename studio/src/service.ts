@@ -64,8 +64,11 @@ export class StudioService {
         "发布前请确认知悉：学员获取的是长期授权，下架只影响新获取，不收回既有学员的访问权。",
       );
     }
-    // §6.7 发布前编译门禁：编译不过不允许发布。
-    compileDraft(draft.material_pack, draft.manifest, { clock: this.#clock });
+    // §6.7 发布前编译门禁：编译不过不允许发布（专家模式带训练模式定义一起编译）。
+    compileDraft(draft.material_pack, draft.manifest, {
+      clock: this.#clock,
+      ...(draft.training_modes_json ? { trainingModes: draft.training_modes_json } : {}),
+    });
 
     if (!draft.base) {
       return this.#firstPublish(draft, input);

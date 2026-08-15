@@ -13,6 +13,7 @@ import {
 } from "./material-validate.js";
 import { planPedagogical } from "./pedagogical-plan.js";
 import { lowerExecutable } from "./executable-lower.js";
+import { loadTrainingModes, type TrainingModes } from "./training-modes.js";
 
 export interface CompileInput {
   manifest: DLCManifest;
@@ -37,6 +38,7 @@ interface RunContext {
   input: CompileInput;
   options: Required<Pick<CompileOptions, "seed">> & CompileOptions;
   manifestHash: string;
+  trainingModes?: TrainingModes;
   validated?: ValidatedMaterial;
   pedagogical?: LearningIR;
   executable?: LearningIR;
@@ -67,6 +69,7 @@ const passRunners: Record<string, PassRunner> = {
       seed: ctx.options.seed,
       now: ctx.options.clock ?? defaultClock,
       completedPasses: [...ctx.completedPasses],
+      trainingModes: ctx.trainingModes,
     });
   },
   "llos.compiler.executable_lower:run": (pass, ctx) => {
@@ -83,6 +86,7 @@ const passRunners: Record<string, PassRunner> = {
       manifestHash: ctx.manifestHash,
       completedPasses: [...ctx.completedPasses],
       resolveTemplate: ctx.options.templateResolver,
+      trainingModes: ctx.trainingModes,
     });
   },
 };
@@ -113,6 +117,7 @@ export function runCompiler(input: CompileInput, options: CompileOptions = {}): 
     input,
     options: { ...options, seed: options.seed ?? 0 },
     manifestHash: contentHash(input.manifest),
+    trainingModes: loadTrainingModes(input.manifest, options.templateResolver),
     completedPasses: [],
   };
 

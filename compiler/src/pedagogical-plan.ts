@@ -2,6 +2,7 @@ import type { DLCManifest, LearningIR } from "@llos/contracts";
 import { sha256Hex } from "./hash.js";
 import { CompilationError } from "./errors.js";
 import type { ValidatedMaterial } from "./material-validate.js";
+import type { TrainingModes } from "./training-modes.js";
 import { RUNTIME_VERSION } from "./runtime-version.js";
 
 const FRAME_MODE: Record<string, string> = {
@@ -24,6 +25,8 @@ export interface PlanContext {
   seed: number;
   now: () => string;
   completedPasses: { id: string; version: string }[];
+  /** 专家模式自定义训练模式（可选）；mode_ref 的 lower 见 spec §4.3。 */
+  trainingModes?: TrainingModes;
 }
 
 export function planPedagogical(
@@ -48,11 +51,11 @@ export function planPedagogical(
   const claimRefs = claimBindings.map((c) => c.claim_ref);
 
   const activityPlan = validated.pack.semantic_frames.map((frame) => {
-    const mode = modeForFrame(frame.frame_type);
+    const mode = modeForFrame(frame.frame_type, frame.id, ctx.trainingModes);
     return {
       stage_id: frame.id,
       mode_ref: mode,
-      claim_refs: claimRefsForMode(manifest, mode, passId),
+      claim_refs: claimRefsForMode(manifest, mode, passId, ctx.trainingModes),
       repeat: REPEAT,
       time_budget_ms: TIME_BUDGET_MS,
     };
@@ -121,7 +124,10 @@ function passVersionOf(manifest: DLCManifest, passId: string): string {
   return pass?.version ?? "0.0.0";
 }
 
-function modeForFrame(frameType: string): string {
+function modeForFrame(frameType: string, stageId: string, modes?: TrainingModes): string {
+  // 专家模式：stage_modes 里的显式映射优先于内置 frame_type 默认。
+  const staged = modes?.stage_modes.get(stageId);
+  if (staged) return staged;
   return FRAME_MODE[frameType] ?? "mode.construction_drill";
 }
 
@@ -129,8 +135,9 @@ function claimRefsForMode(
   manifest: DLCManifest,
   mode: string,
   passId: string,
+  modes?: TrainingModes,
 ): string[] {
-  const suffix = MODE_CLAIM_SUFFIX[mode];
+  const suffix = modes?.modes.get(mode)?.claim_suffix ?? MODE_CLAIM_SUFFIX[mode];
   const claimRef = `${manifest.dlc_id}:claim/${suffix}`;
   if (!manifest.claims?.some((c) => c.claim_ref === claimRef)) {
     throw new CompilationError(

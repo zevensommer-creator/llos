@@ -9,6 +9,9 @@ export const compilationErrorCodes = [
   "material_reference_broken",
   "language_unsupported",
   "template_unresolved",
+  "training_modes_invalid",
+  "training_modes_unresolved",
+  "training_modes_hash_mismatch",
   "ir_schema_invalid",
   "budget_exceeded",
 ] as const;

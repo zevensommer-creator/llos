@@ -43,7 +43,7 @@ export function decideVersionBump(
   };
 }
 
-/** 教学结构 = 学什么（claims）+ 怎么评（evidence policies + 理论档案 + 编译管线）。 */
+/** 教学结构 = 学什么（claims）+ 怎么练怎么评（训练模式 + 评估政策 + 理论档案 + 编译管线）。 */
 function teachingStructureChanged(prev: DLCManifest, next: DLCManifest): boolean {
   const keyOf = (m: DLCManifest) =>
     JSON.stringify([
@@ -54,6 +54,8 @@ function teachingStructureChanged(prev: DLCManifest, next: DLCManifest): boolean
       m.missing_input_handling,
       m.degradation_policy,
       m.accepted_material_schemas,
+      // 专家模式训练模式信封（sha256 绑定内容）：训练结构变化影响学员进度安排。
+      m.extensions ?? {},
     ]);
   return keyOf(prev) !== keyOf(next);
 }

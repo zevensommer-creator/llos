@@ -34,6 +34,8 @@ export interface SandboxOptions {
   seed?: number;
   /** 覆盖默认通用反馈模板（测试或创作者自定义）。 */
   feedbackTemplate?: string;
+  /** 专家模式训练模式定义资源内容（manifest extensions 引用它）。 */
+  trainingModes?: string;
   /** 模拟学员答题结果；默认全部答对。 */
   evaluatorOutcome?: "success" | "failure";
 }
@@ -67,13 +69,18 @@ export function compileDraft(
   const now = options.clock ?? (() => new Date().toISOString());
   const snapshot = buildSnapshot(pack, `snap.studio.${manifest.dlc_id}.${manifest.version}`, now());
   const template = options.feedbackTemplate ?? DEFAULT_FEEDBACK_TEMPLATE;
+  const modes = options.trainingModes;
   try {
     const { executable } = runCompiler(
       { manifest, snapshot, materialPack: pack },
       {
         clock: now,
         seed: options.seed ?? 0,
-        templateResolver: (uri) => (uri.endsWith("feedback-generic") ? { content: template } : undefined),
+        templateResolver: (uri) => {
+          if (uri.endsWith("feedback-generic")) return { content: template };
+          if (modes && uri.endsWith("templates/training-modes")) return { content: modes };
+          return undefined;
+        },
       },
     );
     if (!executable) {

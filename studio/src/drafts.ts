@@ -1,8 +1,16 @@
 import type { InMemoryAccountStore } from "@llos/core";
 import type { ProviderGateway } from "@llos/gateway";
 import type { DLCManifest, MaterialPack } from "@llos/contracts";
-import { StudioError } from "./errors.js";
+import { validate } from "@llos/contracts";
+import {
+  CompilationError,
+  parseTrainingModes,
+  sha256Hex,
+  TRAINING_MODES_EXTENSION_KEY,
+} from "@llos/compiler";
+import { StudioError, translateSchemaErrors } from "./errors.js";
 import { ingestSource, type IngestSource, type StructuredUnit } from "./ingest.js";
+import { compileDraft } from "./sandbox.js";
 import {
   buildManifestDraft,
   buildMaterialPack,
@@ -33,6 +41,10 @@ export interface StudioDraft {
   structured_by: { provider_id: string; model_id?: string };
   /** 图片摄入时记录 OCR 所用 provider（格式解析步骤溯源）。 */
   ocr_by?: { provider_id: string; model_id?: string };
+  /** 专家模式：训练模式定义资源内容（manifest extensions 经 sha256 引用它）。 */
+  training_modes_json?: string;
+  /** 专家模式：manifest 或训练模式被直接编辑过；向导编辑随之锁定。 */
+  expert_edited?: boolean;
   /** 修订草稿的已发布基线（发布时用于版本判定 §6.7）。 */
   base?: DraftBase;
   created_at: string;
@@ -150,6 +162,12 @@ export class StudioDrafts {
         `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
       );
     }
+    if (draft.expert_edited) {
+      throw new StudioError(
+        "draft_state_invalid",
+        "此草稿包含专家模式修改（训练模式或清单），向导编辑会覆盖它们；请继续用专家模式编辑，或重新创建草稿",
+      );
+    }
     const units = edit.units ?? draft.units;
     const title = edit.title?.trim() || draft.manifest.display_name;
     const description =
@@ -195,10 +213,146 @@ export class StudioDrafts {
   }
 
   confirm(creatorId: string, draftId: string, edit: DraftEdit = {}): StudioDraft {
-    const draft = this.edit(creatorId, draftId, edit);
-    const confirmed: StudioDraft = { ...draft, status: "confirmed", updated_at: this.#clock() };
+    const draft = this.get(creatorId, draftId);
+    const hasEdit = edit.title !== undefined || edit.description !== undefined || edit.units !== undefined;
+    if (draft.expert_edited && hasEdit) {
+      throw new StudioError(
+        "draft_state_invalid",
+        "此草稿包含专家模式修改，不能再用向导表单调整；如需改动请继续用专家模式编辑",
+      );
+    }
+    if (draft.expert_edited) {
+      const confirmed: StudioDraft = { ...draft, status: "confirmed", updated_at: this.#clock() };
+      this.#drafts.set(draftId, confirmed);
+      return confirmed;
+    }
+    const updated = this.edit(creatorId, draftId, edit);
+    const confirmed: StudioDraft = { ...updated, status: "confirmed", updated_at: this.#clock() };
     this.#drafts.set(draftId, confirmed);
     return confirmed;
+  }
+
+  /**
+   * 专家模式：直接提交训练模式定义（§6.6）。定义经编译器同一套校验，
+   * 并以 sha256 信封写入 manifest extensions；写回前过编译门禁。
+   */
+  editTrainingModes(creatorId: string, draftId: string, modesJson: string): StudioDraft {
+    const draft = this.#requireEditable(creatorId, draftId);
+    let payload: unknown;
+    try {
+      payload = JSON.parse(modesJson);
+    } catch {
+      throw new StudioError(
+        "draft_schema_invalid",
+        "训练模式定义不是有效的 JSON，请检查括号、引号与逗号",
+      );
+    }
+    try {
+      parseTrainingModes(payload);
+    } catch (err) {
+      throw new StudioError(
+        "draft_schema_invalid",
+        err instanceof CompilationError
+          ? `训练模式定义无法使用：${err.message.replace(/^\[[^\]]+\]\s*[^:]*:\s*/, "")}`
+          : "训练模式定义无法使用，请检查内容",
+      );
+    }
+    const manifest = structuredClone(draft.manifest);
+    manifest.extensions = {
+      ...manifest.extensions,
+      [TRAINING_MODES_EXTENSION_KEY]: {
+        schema_id: TRAINING_MODES_EXTENSION_KEY,
+        schema_version: "0.1.0",
+        payload_ref: {
+          uri: `artifact://dlc/${manifest.dlc_id}/templates/training-modes`,
+          sha256: sha256Hex(modesJson),
+        },
+      },
+    };
+    this.#assertCompilable(draft, manifest, modesJson);
+    const updated: StudioDraft = {
+      ...draft,
+      manifest,
+      training_modes_json: modesJson,
+      expert_edited: true,
+      status: "structured",
+      updated_at: this.#clock(),
+    };
+    this.#drafts.set(draftId, updated);
+    return updated;
+  }
+
+  /** 专家模式：直接编辑完整 manifest JSON（§6.6）；schema 校验 + 编译门禁 + 教学化错误。 */
+  editManifest(creatorId: string, draftId: string, manifestJson: string): StudioDraft {
+    const draft = this.#requireEditable(creatorId, draftId);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(manifestJson);
+    } catch {
+      throw new StudioError(
+        "draft_schema_invalid",
+        "课程清单不是有效的 JSON，请检查括号、引号与逗号",
+      );
+    }
+    const result = validate("dlc-manifest", parsed);
+    if (!result.valid) {
+      throw new StudioError(
+        "draft_schema_invalid",
+        "课程清单暂不满足格式要求",
+        translateSchemaErrors("dlc-manifest", result.errors),
+      );
+    }
+    const manifest = parsed as DLCManifest;
+    if (manifest.dlc_id !== draft.manifest.dlc_id) {
+      throw new StudioError(
+        "draft_schema_invalid",
+        `课程标识（dlc_id）不能修改：清单声明 ${manifest.dlc_id}，草稿是 ${draft.manifest.dlc_id}`,
+      );
+    }
+    this.#assertCompilable(draft, manifest, draft.training_modes_json);
+    const updated: StudioDraft = {
+      ...draft,
+      manifest,
+      expert_edited: true,
+      status: "structured",
+      updated_at: this.#clock(),
+    };
+    this.#drafts.set(draftId, updated);
+    return updated;
+  }
+
+  #requireEditable(creatorId: string, draftId: string): StudioDraft {
+    const draft = this.get(creatorId, draftId);
+    if (draft.status === "published" || draft.status === "discarded") {
+      throw new StudioError(
+        "draft_state_invalid",
+        `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
+      );
+    }
+    return draft;
+  }
+
+  /** 专家编辑的编译门禁：与沙箱/发布共用同一条编译链（§6.7 发布前编译校验）。 */
+  #assertCompilable(
+    draft: StudioDraft,
+    manifest: DLCManifest,
+    trainingModes: string | undefined,
+  ): void {
+    try {
+      compileDraft(draft.material_pack, manifest, {
+        clock: this.#clock,
+        ...(trainingModes ? { trainingModes } : {}),
+      });
+    } catch (err) {
+      if (err instanceof StudioError) {
+        throw new StudioError(
+          "draft_schema_invalid",
+          `修改后的课程暂不能通过编译检查：${err.message.replace(/^试运行前的编译检查未通过，暂时无法试用：/, "")}`,
+          err.details,
+        );
+      }
+      throw err;
+    }
   }
 
   discard(creatorId: string, draftId: string): StudioDraft {
@@ -229,6 +383,10 @@ export class StudioDrafts {
       material_pack: structuredClone(published.material_pack),
       manifest: structuredClone(published.manifest),
       structured_by: published.structured_by,
+      ...(published.training_modes_json
+        ? { training_modes_json: published.training_modes_json }
+        : {}),
+      ...(published.expert_edited ? { expert_edited: published.expert_edited } : {}),
       base: {
         pack: structuredClone(published.material_pack),
         manifest: structuredClone(published.manifest),

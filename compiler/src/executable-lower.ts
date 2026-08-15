@@ -2,6 +2,7 @@ import type { DLCManifest, LearningIR } from "@llos/contracts";
 import { canonicalJson, sha256Hex } from "./hash.js";
 import { CompilationError } from "./errors.js";
 import type { MaterialArtifactRef, ValidatedMaterial } from "./material-validate.js";
+import type { ModeStepDef, TrainingModes } from "./training-modes.js";
 import { RUNTIME_VERSION } from "./runtime-version.js";
 
 const CAPTURE_TIMEOUT_MS = 30_000;
@@ -27,6 +28,8 @@ interface LowerContext {
   manifestHash: string;
   completedPasses: { id: string; version: string }[];
   resolveTemplate?: (uri: string) => { content: string } | undefined;
+  /** 专家模式自定义训练模式；无映射的 stage 走内置默认链。 */
+  trainingModes?: TrainingModes;
 }
 
 const ON_PROVIDER_FAILURE: Record<string, string> = {
@@ -62,52 +65,27 @@ export function lowerExecutable(
         ? referenceFact.object.string
         : undefined;
     const claims = stage.claim_refs;
-    const present: Record<string, unknown> = {
-      step_id: `${stage.stage_id}.present`,
-      primitive: "present",
-      display_mode_ref: stage.mode_ref,
-      claim_refs: claims,
-      present: {
-        prompt: `Übung: ${title}`,
-        ...(referenceText ? { reference_text: referenceText } : {}),
-      },
-      next: `${stage.stage_id}.capture`,
-    };
-    const capture = {
-      step_id: `${stage.stage_id}.capture`,
-      primitive: "capture_text",
-      claim_refs: claims,
-      capture: { timeout_ms: CAPTURE_TIMEOUT_MS, max_length: CAPTURE_MAX_LENGTH },
-      next: `${stage.stage_id}.evaluate`,
-    };
-    const evaluate = {
-      step_id: `${stage.stage_id}.evaluate`,
-      primitive: "evaluate",
-      claim_refs: claims,
-      evaluate: {
-        evaluator: { id: "eval.typed_answer", version: "0.1.0", kind: "rule" },
-        metric_ref: `${manifest.dlc_id}:metric/typed_answer_accuracy`,
-        minimum_measurement_confidence: MIN_CONFIDENCE,
-      },
-      next: `${stage.stage_id}.feedback`,
-    };
-    const feedback = {
-      step_id: `${stage.stage_id}.feedback`,
-      primitive: "feedback",
-      claim_refs: claims,
-      feedback: { template_ref: templateRef },
-      next: `${stage.stage_id}.schedule`,
-    };
-    const nextAfterSchedule =
+    const modeDef = ctx.trainingModes?.modes.get(stage.mode_ref);
+    const nextAfterStage =
       index + 1 < stages.length ? `${stages[index + 1].stage_id}.present` : STOP_STEP_ID;
-    const schedule = {
-      step_id: `${stage.stage_id}.schedule`,
-      primitive: "schedule",
-      claim_refs: claims,
-      schedule: { scheduler: "rule_based", interval: REVIEW_INTERVAL },
-      next: nextAfterSchedule,
+
+    const stageFacts = {
+      modeRef: stage.mode_ref,
+      title,
+      referenceText,
+      claims,
+      templateRef,
+      metricRef: `${manifest.dlc_id}:metric/typed_answer_accuracy`,
     };
-    steps.push(present, capture, evaluate, feedback, schedule);
+
+    const stageSteps = modeDef
+      ? lowerCustomStage(stage.stage_id, modeDef, stageFacts)
+      : lowerDefaultStage(stage.stage_id, stageFacts);
+
+    // 序列尾部衔接：默认链/自定义链最后一步都是 schedule，统一指到下一 stage。
+    const tail = stageSteps[stageSteps.length - 1];
+    tail.next = nextAfterStage;
+    steps.push(...stageSteps);
     totalMs += stage.time_budget_ms ?? 0;
   });
 
@@ -168,6 +146,128 @@ export function lowerExecutable(
       compiled_at: ctx.now(),
     },
   };
+}
+
+interface StageFacts {
+  modeRef: string;
+  title: string;
+  referenceText?: string;
+  claims: string[];
+  templateRef: MaterialArtifactRef;
+  metricRef: string;
+}
+
+function lowerDefaultStage(stageId: string, f: StageFacts): Record<string, unknown>[] {
+  const present: Record<string, unknown> = {
+    step_id: `${stageId}.present`,
+    primitive: "present",
+    display_mode_ref: f.modeRef,
+    claim_refs: f.claims,
+    present: {
+      prompt: `Übung: ${f.title}`,
+      ...(f.referenceText ? { reference_text: f.referenceText } : {}),
+    },
+    next: `${stageId}.capture`,
+  };
+  const capture = {
+    step_id: `${stageId}.capture`,
+    primitive: "capture_text",
+    claim_refs: f.claims,
+    capture: { timeout_ms: CAPTURE_TIMEOUT_MS, max_length: CAPTURE_MAX_LENGTH },
+    next: `${stageId}.evaluate`,
+  };
+  const evaluate = {
+    step_id: `${stageId}.evaluate`,
+    primitive: "evaluate",
+    claim_refs: f.claims,
+    evaluate: {
+      evaluator: { id: "eval.typed_answer", version: "0.1.0", kind: "rule" },
+      metric_ref: f.metricRef,
+      minimum_measurement_confidence: MIN_CONFIDENCE,
+    },
+    next: `${stageId}.feedback`,
+  };
+  const feedback = {
+    step_id: `${stageId}.feedback`,
+    primitive: "feedback",
+    claim_refs: f.claims,
+    feedback: { template_ref: f.templateRef },
+    next: `${stageId}.schedule`,
+  };
+  const schedule = {
+    step_id: `${stageId}.schedule`,
+    primitive: "schedule",
+    claim_refs: f.claims,
+    schedule: { scheduler: "rule_based", interval: REVIEW_INTERVAL },
+    next: STOP_STEP_ID,
+  };
+  return [present, capture, evaluate, feedback, schedule];
+}
+
+/**
+ * 专家模式：按 DLC 声明的模式模板把 stage lower 成闭合原语序列。
+ * 评估器/反馈模板/指标由编译器统一注入（证据与复习不变量不交给作者）；
+ * 作者只决定原语序列与作答形态参数（spec §4.3：mode_ref 必须被 lower）。
+ */
+function lowerCustomStage(
+  stageId: string,
+  mode: { mode_ref: string; steps: ModeStepDef[] },
+  f: StageFacts,
+): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  mode.steps.forEach((def, j) => {
+    const stepId = def.primitive === "present" ? `${stageId}.present` : `${stageId}.${j}.${def.primitive}`;
+    const nextId = j + 1 < mode.steps.length
+      ? mode.steps[j + 1].primitive === "present"
+        ? `${stageId}.present`
+        : `${stageId}.${j + 1}.${mode.steps[j + 1].primitive}`
+      : "";
+    const base: Record<string, unknown> = {
+      step_id: stepId,
+      primitive: def.primitive,
+      claim_refs: f.claims,
+      next: nextId,
+    };
+    switch (def.primitive) {
+      case "present":
+        base.display_mode_ref = mode.mode_ref;
+        base.present = {
+          prompt: `${def.prompt_prefix ?? "Übung: "}${f.title}`,
+          ...(f.referenceText ? { reference_text: f.referenceText } : {}),
+        };
+        break;
+      case "capture_text":
+        base.capture = {
+          timeout_ms: def.timeout_ms ?? CAPTURE_TIMEOUT_MS,
+          max_length: def.max_length ?? CAPTURE_MAX_LENGTH,
+        };
+        break;
+      case "capture_audio":
+        base.capture = {
+          timeout_ms: def.timeout_ms ?? CAPTURE_TIMEOUT_MS,
+          max_recording_ms: def.max_recording_ms ?? 10_000,
+        };
+        break;
+      case "capture_choice":
+        base.capture = { timeout_ms: def.timeout_ms ?? CAPTURE_TIMEOUT_MS };
+        break;
+      case "evaluate":
+        base.evaluate = {
+          evaluator: { id: "eval.typed_answer", version: "0.1.0", kind: "rule" },
+          metric_ref: f.metricRef,
+          minimum_measurement_confidence: MIN_CONFIDENCE,
+        };
+        break;
+      case "feedback":
+        base.feedback = { template_ref: f.templateRef };
+        break;
+      case "schedule":
+        base.schedule = { scheduler: "rule_based", interval: def.interval ?? REVIEW_INTERVAL };
+        break;
+    }
+    out.push(base);
+  });
+  return out;
 }
 
 function resolveTemplateRef(
