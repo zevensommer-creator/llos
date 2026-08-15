@@ -57,6 +57,11 @@ export {
   type VersionDecision,
 } from "./versioning.js";
 export {
+  STUDIO_TEMPLATES,
+  templateById,
+  type StudioTemplate,
+} from "./templates.js";
+export {
   StudioService,
   type PublishDraftInput,
   type PublishListingInput,
