@@ -1,4 +1,5 @@
 import { contentHash } from "../hash.js";
+import { VOWEL_LENGTH_CLASS } from "../phones.js";
 import type {
   G2pPhone,
   G2pResult,
@@ -43,23 +44,13 @@ const LEXICON: Record<string, LexiconEntry> = {
   müde: { phones: ["m", "yː", "d", "ə"], stress_syllable: 1 },
 };
 
-const VOWEL_LENGTH: Record<string, "long" | "short"> = {
-  "iː": "long", "ɪ": "short",
-  "yː": "long", "ʏ": "short",
-  "uː": "long", "ʊ": "short",
-  "eː": "long", "ɛ": "short", "ɛː": "long",
-  "øː": "long", "œ": "short",
-  "oː": "long", "ɔ": "short",
-  "aː": "long", "a": "short", "ə": "short", "ɐ": "short",
-};
-
 const FRONT_CH_CONTEXT = new Set(["i", "e", "ü", "ö", "l", "m", "n", "r", "ä", "y"]);
 
 function lexiconWord(word: string): G2pWord {
   const entry = LEXICON[word];
   const phones: G2pPhone[] = entry.phones.map((symbol) => ({
     symbol,
-    ...(VOWEL_LENGTH[symbol] ? { length_class: VOWEL_LENGTH[symbol] } : {}),
+    ...(VOWEL_LENGTH_CLASS[symbol] ? { length_class: VOWEL_LENGTH_CLASS[symbol] } : {}),
   }));
   return {
     text: word,
@@ -162,7 +153,7 @@ function ruleWord(word: string): G2pWord {
   const { phones, uncertain_symbols } = applyRules(word);
   const g2pPhones: G2pPhone[] = phones.map((symbol, index) => ({
     symbol,
-    ...(VOWEL_LENGTH[symbol] ? { length_class: VOWEL_LENGTH[symbol] } : {}),
+    ...(VOWEL_LENGTH_CLASS[symbol] ? { length_class: VOWEL_LENGTH_CLASS[symbol] } : {}),
     ...(uncertain_symbols.includes(index) ? { uncertain: true } : {}),
   }));
   return {

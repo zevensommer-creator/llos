@@ -12,6 +12,25 @@ export interface Stage0Thresholds {
   min_word_alignment_confidence: number;
 }
 
+// Stage 0 conservative diagnosis thresholds (spec §10.4, §13.2). Biased
+// towards abstention: a phone is only flagged when GOP and an independent
+// acoustic cue agree, and only "confirmed" when the fused confidence clears
+// issue_confirm_confidence.
+export interface DiagnosticThresholds {
+  gop_confident_accept: number;
+  gop_issue_posterior: number;
+  gop_confidence_floor: number;
+  competitor_margin: number;
+  competitor_confirm_posterior: number;
+  vowel_duration_min_ms: number;
+  vowel_quantity_short_ratio: number;
+  vowel_quantity_long_ratio: number;
+  formant_confirm_offset_hz: number;
+  formant_ambiguous_band_hz: number;
+  word_confidence_floor: number;
+  issue_confirm_confidence: number;
+}
+
 export interface LanguageProfile {
   language: string;
   profile_id: string;
@@ -23,7 +42,23 @@ export interface LanguageProfile {
   supported_modes: readonly ("read_aloud" | "shadowing")[];
   domain_status: "in_domain" | "partially_in_domain" | "out_of_domain" | "unknown";
   thresholds: Stage0Thresholds;
+  diagnostics: DiagnosticThresholds;
 }
+
+const STAGE0_DIAGNOSTICS: DiagnosticThresholds = {
+  gop_confident_accept: 0.9,
+  gop_issue_posterior: 0.55,
+  gop_confidence_floor: 0.6,
+  competitor_margin: 0.25,
+  competitor_confirm_posterior: 0.6,
+  vowel_duration_min_ms: 40,
+  vowel_quantity_short_ratio: 0.62,
+  vowel_quantity_long_ratio: 1.6,
+  formant_confirm_offset_hz: 100,
+  formant_ambiguous_band_hz: 150,
+  word_confidence_floor: 0.75,
+  issue_confirm_confidence: 0.75,
+};
 
 export const GERMAN_PROFILE: LanguageProfile = {
   language: "de-DE",
@@ -48,6 +83,7 @@ export const GERMAN_PROFILE: LanguageProfile = {
     min_alignment_mean_confidence: 0.6,
     min_word_alignment_confidence: 0.5,
   },
+  diagnostics: STAGE0_DIAGNOSTICS,
 };
 
 const PROFILES: Record<string, LanguageProfile> = {

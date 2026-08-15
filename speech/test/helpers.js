@@ -5,6 +5,8 @@ const {
   makeFakeAligner,
   makeFakeAnalyzer,
   makeFakeAsr,
+  makeFakeGop,
+  makeFakeProsody,
   makeFakeVad,
 } = require("../dist/index.js");
 
@@ -59,10 +61,21 @@ function makeEngine(overrides = {}) {
   };
 }
 
+// Full engine = P3a engine + GOP/prosody scorers (P3b diagnosis path).
+// gop_script/prosody_script reach the fakes directly for per-phone overrides.
+function makeFullEngine(overrides = {}) {
+  return {
+    ...makeEngine(overrides),
+    gop: overrides.gop ?? makeFakeGop(overrides.gop_script ?? {}),
+    prosody: overrides.prosody ?? makeFakeProsody(overrides.prosody_script ?? {}),
+  };
+}
+
 module.exports = {
   FIXED_CLOCK,
   REFERENCE_TEXT,
   makeAudio,
   makeEngine,
+  makeFullEngine,
   makeInput,
 };

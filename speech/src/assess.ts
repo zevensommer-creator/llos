@@ -2,10 +2,16 @@ import { assertValid, type PronunciationAssessment } from "@llos/contracts";
 import { contentHash } from "./hash.js";
 import { evaluateAudioQuality } from "./audio-quality.js";
 import { matchContent, normalizeGermanText } from "./asr-match.js";
+import { calibrateGerman } from "./calibration.js";
+import type { PhoneDiagnostic } from "./diagnostics.js";
 import { findLanguageProfile, type LanguageProfile } from "./profiles.js";
 import type {
+  AlignResult,
+  AsrResult,
   AssessInput,
   AssessOptions,
+  GopResult,
+  ProsodyResult,
   SpeechEngine,
 } from "./types.js";
 
@@ -38,6 +44,7 @@ function evidenceNumber(
   unit: string,
   confidence: number,
   source: string,
+  target_ref?: string,
 ): PronunciationAssessment["evidence"][number] {
   return {
     evidence_id,
@@ -46,6 +53,7 @@ function evidenceNumber(
     unit,
     confidence,
     source_component_ref: source,
+    ...(target_ref ? { target_ref } : {}),
   };
 }
 
@@ -143,6 +151,8 @@ function attachComponents(
     engine.asr.descriptor,
     engine.g2p.descriptor,
     engine.aligner.descriptor,
+    ...(engine.gop ? [engine.gop.descriptor] : []),
+    ...(engine.prosody ? [engine.prosody.descriptor] : []),
   ];
   for (const descriptor of descriptors) {
     if (seen.has(descriptor.component_ref)) continue;
@@ -391,14 +401,96 @@ export function assessPronunciation(
     );
   }
 
-  return finalize(assembleCompleted(ctx, engine, alignment, asr, match));
+  if (!engine.gop || !engine.prosody) {
+    return finalize(assembleCompleted(ctx, engine, alignment, asr, match));
+  }
+
+  const gop = engine.gop.score(input.audio, alignment);
+  const prosody = engine.prosody.analyze(input.audio, alignment);
+
+  if (gop.status === "failed") {
+    return finalize(
+      assembleCompleted(ctx, engine, alignment, asr, match, {
+        phonemeAbstainReason: "provider_failure",
+        phonemeAbstainMessage: `GOP scorer failed (${gop.failure_code ?? "GOP_FAILED"}); phoneme accuracy abstained.`,
+      }),
+    );
+  }
+
+  return finalize(
+    assembleDiagnosed(ctx, engine, alignment, asr, match, gop, prosody),
+  );
+}
+
+interface LegacyOptions {
+  phonemeAbstainReason?: AbstentionReason;
+  phonemeAbstainMessage?: string;
 }
 
 function assembleCompleted(
   ctx: AssemblyContext,
   engine: SpeechEngine,
-  alignment: ReturnType<SpeechEngine["aligner"]["align"]>,
-  asr: ReturnType<SpeechEngine["asr"]["transcribe"]>,
+  alignment: AlignResult,
+  asr: AsrResult,
+  match: ReturnType<typeof matchContent>,
+  options: LegacyOptions = {},
+): PronunciationAssessment {
+  const assessment = assembleTracked(ctx, engine, alignment, asr, match);
+
+  const gopAbstentionId = "abs.phoneme-accuracy.no-gop";
+  assessment.abstentions.push({
+    abstention_id: gopAbstentionId,
+    scope: "dimension",
+    target_ref: "phoneme_accuracy",
+    reason_code: options.phonemeAbstainReason ?? "unsupported_language_feature",
+    message:
+      options.phonemeAbstainMessage ??
+      `Engine provides no GOP/prosody scorers; phoneme accuracy abstained (pipeline ${SPEECH_PIPELINE_VERSION}).`,
+  });
+  assessment.dimensions = [
+    {
+      id: "phoneme_accuracy",
+      status: "abstained",
+      confidence: 0,
+      evidence_refs: ["ev.alignment.coverage"],
+      abstention_ref: gopAbstentionId,
+    },
+    {
+      id: "completeness",
+      status: "scored",
+      score: Math.round(match.completeness * 100),
+      confidence: asr.hypotheses[0]?.confidence ?? 0,
+      evidence_refs: ["ev.asr.confidence"],
+    },
+  ];
+
+  const minWordConfidence = ctx.profile?.thresholds.min_word_alignment_confidence ?? 0.5;
+  assessment.words = alignment.words.map((word) => ({
+    word_id: word.word_id,
+    text: word.text,
+    interval: { start_ms: word.start_ms, end_ms: word.end_ms },
+    alignment_confidence: word.alignment_confidence,
+    phones: word.phones.map((phone) => ({
+      phone_id: phone.phone_id,
+      expected: phone.expected,
+      interval: { start_ms: phone.start_ms, end_ms: phone.end_ms },
+      status:
+        word.alignment_confidence < minWordConfidence ? "not_aligned" : "uncertain",
+      confidence: phone.confidence,
+      evidence_refs: ["ev.alignment.coverage"],
+    })),
+    issue_refs: [],
+  }));
+
+  attachComponents(assessment, engine, ctx.profile);
+  return assessment;
+}
+
+function assembleTracked(
+  ctx: AssemblyContext,
+  engine: SpeechEngine,
+  alignment: AlignResult,
+  asr: AsrResult,
   match: ReturnType<typeof matchContent>,
 ): PronunciationAssessment {
   const assessment = assembleBase(ctx);
@@ -447,32 +539,241 @@ function assembleCompleted(
       engine.aligner.descriptor.component_ref,
     ),
   );
+  return assessment;
+}
 
-  const topConfidence = asr.hypotheses[0]?.confidence ?? 0;
-  const gopAbstentionId = "abs.phoneme-accuracy.no-gop";
-  assessment.abstentions.push({
-    abstention_id: gopAbstentionId,
-    scope: "dimension",
-    target_ref: "phoneme_accuracy",
-    reason_code: "unsupported_language_feature",
-    message: `Pipeline ${SPEECH_PIPELINE_VERSION} aligns phones but defers GOP scoring to the calibrated diagnoser (P3b).`,
+interface DiagnosticEvidenceIds {
+  gop: string;
+  ctc?: string;
+  duration?: string;
+  formant?: string;
+}
+
+function evidenceIdsFor(diagnostic: PhoneDiagnostic): DiagnosticEvidenceIds {
+  return {
+    gop: `ev.gop.${diagnostic.phone_id}`,
+    ...(diagnostic.gop?.competitor
+      ? { ctc: `ev.ctc.${diagnostic.phone_id}` }
+      : {}),
+    ...(diagnostic.vowel_acoustic
+      ? {
+          duration: `ev.duration.${diagnostic.phone_id}`,
+          ...(diagnostic.vowel_acoustic.f2_hz !== null
+            ? { formant: `ev.formant.${diagnostic.phone_id}` }
+            : {}),
+        }
+      : {}),
+  };
+}
+
+function assembleDiagnosed(
+  ctx: AssemblyContext,
+  engine: SpeechEngine,
+  alignment: AlignResult,
+  asr: AsrResult,
+  match: ReturnType<typeof matchContent>,
+  gop: GopResult,
+  prosody: ProsodyResult,
+): PronunciationAssessment {
+  const assessment = assembleTracked(ctx, engine, alignment, asr, match);
+
+  const g2p = engine.g2p.toPronunciation(normalizeGermanText(ctx.input.reference.text));
+  const calibration = calibrateGerman({
+    profile: ctx.profile!,
+    alignment,
+    g2pWords: g2p.words,
+    gop,
+    prosody,
   });
-  assessment.dimensions = [
-    {
-      id: "phoneme_accuracy",
-      status: "abstained",
-      confidence: 0,
-      evidence_refs: ["ev.alignment.coverage"],
-      abstention_ref: gopAbstentionId,
-    },
-    {
-      id: "completeness",
-      status: "scored",
-      score: Math.round(match.completeness * 100),
-      confidence: topConfidence,
-      evidence_refs: ["ev.asr.confidence"],
-    },
-  ];
+
+  const gopSource = engine.gop!.descriptor.component_ref;
+  const prosodySource = engine.prosody!.descriptor.component_ref;
+  const phoneById = new Map(
+    calibration.diagnostics.map((item) => [item.phone_id, item]),
+  );
+
+  for (const diagnostic of calibration.diagnostics) {
+    if (diagnostic.gop) {
+      assessment.evidence.push(
+        evidenceNumber(
+          `ev.gop.${diagnostic.phone_id}`,
+          "gop",
+          diagnostic.gop.posterior,
+          "probability",
+          diagnostic.gop.confidence,
+          gopSource,
+          diagnostic.phone_id,
+        ),
+      );
+      if (diagnostic.gop.competitor) {
+        assessment.evidence.push(
+          evidenceNumber(
+            `ev.ctc.${diagnostic.phone_id}`,
+            "ctc_posterior",
+            diagnostic.gop.competitor.posterior,
+            "probability",
+            diagnostic.gop.confidence,
+            gopSource,
+            diagnostic.phone_id,
+          ),
+        );
+      }
+    }
+    if (diagnostic.vowel_acoustic) {
+      assessment.evidence.push(
+        evidenceNumber(
+          `ev.duration.${diagnostic.phone_id}`,
+          "duration",
+          diagnostic.vowel_acoustic.duration_ms,
+          "ms",
+          0.8,
+          prosodySource,
+          diagnostic.phone_id,
+        ),
+      );
+      if (diagnostic.vowel_acoustic.f2_hz !== null) {
+        assessment.evidence.push(
+          evidenceNumber(
+            `ev.formant.${diagnostic.phone_id}`,
+            "formant",
+            diagnostic.vowel_acoustic.f2_hz,
+            "Hz",
+            0.7,
+            prosodySource,
+            diagnostic.phone_id,
+          ),
+        );
+      }
+    }
+  }
+
+  const issueIdsByPhone = new Map<string, string[]>();
+  let issueCounter = 0;
+  const alignedPhones = alignment.words.flatMap((word) => word.phones);
+  for (const diagnostic of calibration.diagnostics) {
+    if (diagnostic.status !== "issue" || !diagnostic.issue) continue;
+    const alignedPhone = alignedPhones.find(
+      (phone) => phone.phone_id === diagnostic.phone_id,
+    );
+    if (!alignedPhone) continue;
+    issueCounter += 1;
+    const issue_id = `issue.${issueCounter}.${diagnostic.issue.category}`;
+    const ids = evidenceIdsFor(diagnostic);
+    const refs: string[] = [];
+    if (diagnostic.issue.channels.includes("gop")) {
+      refs.push(ids.gop);
+      if (ids.ctc) refs.push(ids.ctc);
+    }
+    if (diagnostic.issue.channels.includes("duration") && ids.duration) {
+      refs.push(ids.duration);
+    }
+    if (diagnostic.issue.channels.includes("formant") && ids.formant) {
+      refs.push(ids.formant);
+    }
+    const evidence_refs: [string, ...string[]] =
+      refs.length > 0 ? [refs[0]!, ...refs.slice(1)] : ["ev.alignment.coverage"];
+    assessment.issues.push({
+      issue_id,
+      category: diagnostic.issue.category,
+      status: diagnostic.issue.status,
+      severity: diagnostic.issue.severity,
+      target: alignedPhone.expected,
+      observed: diagnostic.issue.observed,
+      location: { start_ms: alignedPhone.start_ms, end_ms: alignedPhone.end_ms },
+      word_ref: diagnostic.word_id,
+      phone_ref: diagnostic.phone_id,
+      confidence: diagnostic.issue.confidence,
+      evidence_refs,
+      feedback_key: diagnostic.issue.feedback_key,
+      pedagogical_priority: diagnostic.issue.pedagogical_priority,
+    });
+    issueIdsByPhone.set(diagnostic.phone_id, [
+      ...(issueIdsByPhone.get(diagnostic.phone_id) ?? []),
+      issue_id,
+    ]);
+  }
+
+  for (const diagnostic of calibration.diagnostics) {
+    if (!diagnostic.abstention) continue;
+    assessment.abstentions.push({
+      abstention_id: `abs.${diagnostic.phone_id}.${diagnostic.abstention.reason_code}`,
+      scope: "phone",
+      target_ref: diagnostic.phone_id,
+      reason_code: diagnostic.abstention.reason_code,
+      message: diagnostic.abstention.message,
+    });
+  }
+
+  const stressAbstentionId = "abs.word-stress.stage0";
+  assessment.abstentions.push({
+    abstention_id: stressAbstentionId,
+    scope: "dimension",
+    target_ref: "word_stress",
+    reason_code: "evidence_conflict",
+    message: `Stage 0 has no joint F0/intensity/duration stress model; word stress deferred (pipeline ${SPEECH_PIPELINE_VERSION}).`,
+  });
+
+  const dims: PronunciationAssessment["dimensions"][number][] = [];
+  for (const roll of calibration.dimensions) {
+    if (roll.id === "phoneme_accuracy") {
+      dims.push({
+        id: "phoneme_accuracy",
+        status: roll.status,
+        ...(roll.status === "scored" && roll.score !== undefined
+          ? { score: roll.score }
+          : {}),
+        confidence: roll.confidence,
+        evidence_refs: roll.evidence_phone_ids.map((id) => `ev.gop.${id}`),
+        ...(roll.status === "abstained"
+          ? { abstention_ref: "abs.phoneme-accuracy.no-scores" }
+          : {}),
+      });
+      if (roll.status === "abstained") {
+        assessment.abstentions.push({
+          abstention_id: "abs.phoneme-accuracy.no-scores",
+          scope: "dimension",
+          target_ref: "phoneme_accuracy",
+          reason_code: "evidence_conflict",
+          message: "No GOP scores survived calibration for this utterance.",
+        });
+      }
+    } else if (roll.id === "vowel_quantity") {
+      dims.push({
+        id: "vowel_quantity",
+        status: roll.status,
+        ...(roll.status === "scored" && roll.score !== undefined
+          ? { score: roll.score }
+          : {}),
+        confidence: roll.confidence,
+        evidence_refs: roll.evidence_phone_ids.map((id) => `ev.duration.${id}`),
+      });
+    } else {
+      dims.push({
+        id: "vowel_quality",
+        status: roll.status,
+        ...(roll.status === "scored" && roll.score !== undefined
+          ? { score: roll.score }
+          : {}),
+        confidence: roll.confidence,
+        evidence_refs: roll.evidence_phone_ids.map((id) => `ev.formant.${id}`),
+      });
+    }
+  }
+  dims.push({
+    id: "word_stress",
+    status: "abstained",
+    confidence: 0,
+    evidence_refs: [],
+    abstention_ref: stressAbstentionId,
+  });
+  dims.push({
+    id: "completeness",
+    status: "scored",
+    score: Math.round(match.completeness * 100),
+    confidence: asr.hypotheses[0]?.confidence ?? 0,
+    evidence_refs: ["ev.asr.confidence"],
+  });
+  assessment.dimensions = dims as unknown as PronunciationAssessment["dimensions"];
 
   const minWordConfidence = ctx.profile?.thresholds.min_word_alignment_confidence ?? 0.5;
   assessment.words = alignment.words.map((word) => ({
@@ -480,16 +781,28 @@ function assembleCompleted(
     text: word.text,
     interval: { start_ms: word.start_ms, end_ms: word.end_ms },
     alignment_confidence: word.alignment_confidence,
-    phones: word.phones.map((phone) => ({
-      phone_id: phone.phone_id,
-      expected: phone.expected,
-      interval: { start_ms: phone.start_ms, end_ms: phone.end_ms },
-      status:
-        word.alignment_confidence < minWordConfidence ? "not_aligned" : "uncertain",
-      confidence: phone.confidence,
-      evidence_refs: ["ev.alignment.coverage"],
-    })),
-    issue_refs: [],
+    phones: word.phones.map((phone) => {
+      const diagnostic = phoneById.get(phone.phone_id);
+      const issueRefs = issueIdsByPhone.get(phone.phone_id);
+      return {
+        phone_id: phone.phone_id,
+        expected: phone.expected,
+        interval: { start_ms: phone.start_ms, end_ms: phone.end_ms },
+        status: diagnostic
+          ? diagnostic.status
+          : word.alignment_confidence < minWordConfidence
+            ? "not_aligned"
+            : "uncertain",
+        confidence: diagnostic?.gop?.confidence ?? phone.confidence,
+        evidence_refs: [`ev.gop.${phone.phone_id}`],
+        ...(issueRefs ? { issue_refs: issueRefs } : {}),
+      };
+    }),
+    issue_refs: [
+      ...new Set(
+        word.phones.flatMap((phone) => issueIdsByPhone.get(phone.phone_id) ?? []),
+      ),
+    ],
   }));
 
   attachComponents(assessment, engine, ctx.profile);

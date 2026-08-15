@@ -4,7 +4,16 @@ export interface ArtifactRef {
   media_type: string;
 }
 
-export type SpeechRole = "vad" | "asr" | "g2p" | "alignment" | "calibration";
+export type SpeechRole =
+  | "vad"
+  | "asr"
+  | "g2p"
+  | "alignment"
+  | "gop"
+  | "ctc"
+  | "prosody"
+  | "calibration"
+  | "feedback";
 
 export interface SpeechComponentDescriptor {
   component_ref: string;
@@ -93,6 +102,54 @@ export interface AlignResult {
   failure_code?: string;
 }
 
+export interface GopCompetitor {
+  phone: string;
+  posterior: number;
+}
+
+export interface GopPhoneScore {
+  phone_id: string;
+  posterior: number;
+  competitors: GopCompetitor[];
+  confidence: number;
+}
+
+export interface GopResult {
+  status: "completed" | "failed";
+  scores: GopPhoneScore[];
+  failure_code?: string;
+}
+
+export interface GopPort {
+  descriptor: SpeechComponentDescriptor;
+  score(audio: AudioArtifact, alignment: AlignResult): GopResult;
+}
+
+export interface VowelAcoustic {
+  phone_id: string;
+  duration_ms: number;
+  f1_hz: number | null;
+  f2_hz: number | null;
+  f0_hz: number | null;
+  intensity_db: number | null;
+}
+
+export interface ProsodyResult {
+  status: "completed" | "failed";
+  voiced_ratio: number;
+  f0_median_hz: number | null;
+  f0_range_semitones: number | null;
+  articulation_rate: number | null;
+  pauses: { start_ms: number; end_ms: number }[];
+  vowel_acoustics: VowelAcoustic[];
+  failure_code?: string;
+}
+
+export interface ProsodyPort {
+  descriptor: SpeechComponentDescriptor;
+  analyze(audio: AudioArtifact, alignment: AlignResult): ProsodyResult;
+}
+
 export interface AudioAnalyzerPort {
   descriptor: SpeechComponentDescriptor;
   measure(audio: AudioArtifact): AudioMeasurements;
@@ -128,6 +185,8 @@ export interface SpeechEngine {
   asr: AsrPort;
   g2p: G2pPort;
   aligner: AlignerPort;
+  gop?: GopPort;
+  prosody?: ProsodyPort;
 }
 
 export type PronunciationMode =
