@@ -41,6 +41,21 @@ export {
   type InvitationIssueOptions,
 } from "./invitations.js";
 export {
+  ClassService,
+  ClassError,
+  classEntitlementSource,
+  CREATE_CLASS_CAPABILITY,
+  JOIN_CLASS_CAPABILITY,
+  type ClassRecord,
+  type ClassMembership,
+  type ClassInvitationRecord,
+  type ClassErrorCode,
+  type ClassServiceDeps,
+  type CreateClassOptions,
+  type ClassUpdate,
+  type ClassInvitationIssueOptions,
+} from "./classes.js";
+export {
   SessionExecutor,
   EXECUTOR_ID,
   EXECUTOR_VERSION,
