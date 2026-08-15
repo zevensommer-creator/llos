@@ -1,57 +1,102 @@
 import { useEffect, useState } from "react";
-import { MockApiClient, type Account, type CapabilityId } from "@llos/api-client";
+import {
+  MockApiClient,
+  type Account,
+  type JourneyId,
+  type LoadScenario,
+} from "@llos/api-client";
+import { JourneyHost } from "./components/JourneyHost";
+import { ChatJourney } from "./journeys/ChatJourney";
+import { LearningJourney } from "./journeys/LearningJourney";
+import { WorkbenchJourney } from "./journeys/WorkbenchJourney";
+import type { AccountKind } from "./hooks/useJourneyState";
 
-interface WorkbenchSection {
-  id: string;
-  title: string;
-  description: string;
-  requires?: CapabilityId;
-}
+// Web（desktop_web）呈现三条旅程：聊天 / 学习 / 电脑工作台。
+// 教师助手为移动端旅程（CLIENT_SURFACE_SPEC §4），在 mobile app 呈现。
+const WEB_JOURNEYS: readonly { id: JourneyId; label: string }[] = [
+  { id: "chat", label: "聊天" },
+  { id: "learning", label: "学习" },
+  { id: "workbench", label: "电脑工作台" },
+];
 
-// CLIENT_SURFACE_SPEC §5: desktop-only work (Studio, batch, review, admin).
-const SECTIONS: readonly WorkbenchSection[] = [
-  { id: "chat", title: "普通聊天", description: "ChatSession（DLC 为空）：不产生学习状态" },
-  { id: "learning", title: "学习工作台", description: "LearningSession：三层就绪后执行训练与反馈" },
-  { id: "market", title: "市场", description: "DLC 与素材的浏览、获取与已购内容" },
-  { id: "classes", title: "班级管理", description: "批量成员管理、学习组合分配、截止日期", requires: "create_class" },
-  { id: "studio", title: "DLC Studio", description: "DLC 创建、编辑、测试与发布；BYOK", requires: "publish_dlc" },
-  { id: "review", title: "审核与用户", description: "内容下架、用户管理、系统配置", requires: "manage_users" },
+const SCENARIOS: readonly { id: LoadScenario; label: string }[] = [
+  { id: "normal", label: "正常" },
+  { id: "empty", label: "空白" },
+  { id: "loading", label: "加载" },
+  { id: "permission_denied", label: "权限不足" },
+  { id: "offline", label: "离线" },
+  { id: "error_recoverable", label: "可恢复失败" },
+  { id: "error_unrecoverable", label: "不可恢复失败" },
 ];
 
 function App() {
+  const [journey, setJourney] = useState<JourneyId>("chat");
+  const [scenario, setScenario] = useState<LoadScenario>("normal");
+  const [accountKind, setAccountKind] = useState<AccountKind>("learner");
+  const [reloadKey, setReloadKey] = useState(0);
   const [account, setAccount] = useState<Account | null>(null);
 
   useEffect(() => {
-    const client = new MockApiClient();
-    void client.getAccount().then(setAccount);
-  }, []);
+    void new MockApiClient({ account: accountKind }).getAccount().then(setAccount);
+  }, [accountKind]);
+
+  const retry = () => setReloadKey((k) => k + 1);
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="brand">LLOS 工作台</div>
-        <div className="account">{account ? account.display_name : "加载中"}</div>
-      </header>
-      <main className="workbench">
-        <p className="hint">
-          UI-1 工程骨架：App Shell + Mock adapter。区域按账户能力显示——显示控制不是安全控制，写操作由服务端重新授权。
-        </p>
-        <div className="sections">
-          {SECTIONS.map((section) => {
-            const allowed = !section.requires || account?.capabilities.includes(section.requires);
-            return (
-              <section
-                key={section.id}
-                className={`section ${allowed ? "" : "section-locked"}`}
-                aria-disabled={!allowed}
-              >
-                <h2>{section.title}</h2>
-                <p>{section.description}</p>
-                {!allowed && <p className="locked-note">需要对应能力点（当前为 Mock 学习者账户）</p>}
-              </section>
-            );
-          })}
+        <div className="header-controls">
+          <label className="control">
+            账户
+            <select value={accountKind} onChange={(e) => setAccountKind(e.target.value as AccountKind)}>
+              <option value="learner">学习者</option>
+              <option value="teacher">教师</option>
+            </select>
+          </label>
+          <label className="control">
+            场景（七态演示）
+            <select value={scenario} onChange={(e) => setScenario(e.target.value as LoadScenario)}>
+              {SCENARIOS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="account">{account ? account.display_name : "加载中"}</div>
         </div>
+      </header>
+
+      <nav className="journey-nav">
+        {WEB_JOURNEYS.map((j) => (
+          <button
+            key={j.id}
+            type="button"
+            className={`nav-tab ${journey === j.id ? "nav-tab--active" : ""}`}
+            onClick={() => setJourney(j.id)}
+          >
+            {j.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="workbench">
+        {journey === "chat" ? (
+          <JourneyHost journey="chat" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+            {(data) => <ChatJourney data={data} />}
+          </JourneyHost>
+        ) : null}
+        {journey === "learning" ? (
+          <JourneyHost journey="learning" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+            {(data) => <LearningJourney data={data} />}
+          </JourneyHost>
+        ) : null}
+        {journey === "workbench" ? (
+          <JourneyHost journey="workbench" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+            {(data, acc) => <WorkbenchJourney data={data} account={acc} />}
+          </JourneyHost>
+        ) : null}
       </main>
     </div>
   );

@@ -79,3 +79,289 @@ body {
   margin-top: var(--llos-space-sm);
   color: var(--llos-color-warning);
 }
+
+/* ===== UI-2：头部控制与场景切换 ===== */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--llos-space-lg);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--llos-space-xs);
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-ink-secondary);
+}
+
+.control select {
+  font: inherit;
+  color: var(--llos-color-ink);
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+}
+
+/* ===== UI-2：旅程导航 ===== */
+.journey-nav {
+  display: flex;
+  gap: var(--llos-space-sm);
+  padding: 0 var(--llos-space-xl);
+  background: var(--llos-color-surface);
+  border-bottom: 1px solid var(--llos-color-border);
+}
+
+.nav-tab {
+  font: inherit;
+  border: none;
+  background: none;
+  padding: var(--llos-space-md) var(--llos-space-lg);
+  color: var(--llos-color-ink-secondary);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.nav-tab--active {
+  color: var(--llos-color-accent);
+  border-bottom-color: var(--llos-color-accent);
+  font-weight: 600;
+}
+
+/* ===== UI-2：七态渲染 ===== */
+.state {
+  display: block;
+}
+
+.state-panel {
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-xxl);
+  text-align: center;
+  max-width: 560px;
+  margin: var(--llos-space-xxl) auto;
+}
+
+.state-panel--warning {
+  border-color: var(--llos-color-warning);
+}
+
+.state-panel--danger {
+  border-color: var(--llos-color-danger);
+}
+
+.state-title {
+  font-size: var(--llos-font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--llos-space-sm);
+}
+
+.state-body {
+  color: var(--llos-color-ink-secondary);
+  margin: 0 0 var(--llos-space-sm);
+}
+
+.state-meta {
+  color: var(--llos-color-ink-disabled);
+  font-size: var(--llos-font-size-sm);
+}
+
+.state--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--llos-space-sm);
+  padding: var(--llos-space-xxl);
+  color: var(--llos-color-ink-secondary);
+}
+
+.state-banner {
+  padding: var(--llos-space-sm) var(--llos-space-md);
+  border-radius: var(--llos-radius-sm);
+  font-size: var(--llos-font-size-sm);
+  margin-bottom: var(--llos-space-md);
+}
+
+.state-banner--warning {
+  background: var(--llos-color-accent-soft);
+  color: var(--llos-color-warning);
+  border: 1px solid var(--llos-color-warning);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--llos-color-border);
+  border-top-color: var(--llos-color-accent);
+  border-radius: 50%;
+  display: inline-block;
+  animation: llos-spin 0.8s linear infinite;
+}
+
+@keyframes llos-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn {
+  font: inherit;
+  background: var(--llos-color-accent);
+  color: var(--llos-color-accent-ink);
+  border: none;
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-sm) var(--llos-space-lg);
+  cursor: pointer;
+}
+
+/* ===== UI-2：旅程通用 ===== */
+.journey-head {
+  display: flex;
+  align-items: center;
+  gap: var(--llos-space-md);
+  margin-bottom: var(--llos-space-sm);
+}
+
+.journey-title {
+  margin: 0;
+  font-size: var(--llos-font-size-xl);
+}
+
+.journey-note {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+  margin: 0 0 var(--llos-space-lg);
+}
+
+.mode-badge {
+  font-size: var(--llos-font-size-sm);
+  font-weight: 600;
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+  border-radius: var(--llos-radius-pill);
+}
+
+.mode-badge--chat {
+  background: var(--llos-color-mode-chat-soft);
+  color: var(--llos-color-mode-chat);
+}
+
+.mode-badge--learning {
+  background: var(--llos-color-mode-learning-soft);
+  color: var(--llos-color-mode-learning);
+}
+
+/* ===== UI-2：聊天旅程 ===== */
+.chat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-md);
+  max-width: 720px;
+}
+
+.chat-msg {
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-md);
+  background: var(--llos-color-surface);
+}
+
+.chat-msg--user {
+  background: var(--llos-color-accent-soft);
+}
+
+.chat-role {
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-ink-disabled);
+}
+
+.chat-text {
+  margin: var(--llos-space-xs) 0 0;
+}
+
+.chat-ref {
+  display: inline-block;
+  margin-top: var(--llos-space-xs);
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-mode-chat);
+}
+
+/* ===== UI-2：学习旅程 ===== */
+.activity-card,
+.feedback-card {
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-left: 4px solid var(--llos-color-mode-learning);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-lg);
+  margin-bottom: var(--llos-space-lg);
+  max-width: 720px;
+}
+
+.feedback-card--abstained {
+  border-left-color: var(--llos-color-warning);
+}
+
+.activity-kind {
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-ink-disabled);
+  margin: 0 0 var(--llos-space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.activity-prompt {
+  font-size: var(--llos-font-size-lg);
+  margin: 0 0 var(--llos-space-xs);
+}
+
+.learning-state {
+  max-width: 720px;
+  margin-top: var(--llos-space-lg);
+}
+
+.state-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}
+
+.state-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-xs);
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-md);
+}
+
+.mastery {
+  font-size: var(--llos-font-size-sm);
+  font-weight: 600;
+}
+
+.mastery--provisional {
+  color: var(--llos-color-warning);
+}
+
+.mastery--learned {
+  color: var(--llos-color-success);
+}
+
+.mastery--lapsed {
+  color: var(--llos-color-danger);
+}
+
+.sync-status {
+  margin-top: var(--llos-space-xl);
+  color: var(--llos-color-ink-disabled);
+  font-size: var(--llos-font-size-sm);
+}

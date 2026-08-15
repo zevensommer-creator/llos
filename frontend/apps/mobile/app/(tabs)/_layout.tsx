@@ -18,6 +18,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "首页" }} />
+      <Tabs.Screen name="chat" options={{ title: "聊天" }} />
       <Tabs.Screen name="learn" options={{ title: "学习" }} />
       <Tabs.Screen name="market" options={{ title: "市场" }} />
       <Tabs.Screen
