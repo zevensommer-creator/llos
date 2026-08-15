@@ -38,7 +38,7 @@
 | T-014 | P1：契约代码化管线 + Core/Gateway 骨架 | done | trae | 高 | T-016 | pnpm monorepo；@llos/contracts（15 schema 代码生成 + ajv 校验器 + 53 测试）；@llos/core（追加式事件存储/确定性 reducer/投影/identity/entitlements，18 测试）；@llos/gateway（descriptor 注册表/capability 解析/Fake Provider/fallback，9 测试）；后端栈 TS 全栈（ADR-BACKEND-STACK） |
 | T-015 | UI-1：前端工程骨架 | done | trae | 高 | T-013 | frontend/apps（Expo 57 移动 App Shell + Vite/React Web 工作台）+ frontend/packages（design-tokens 生成 RN/CSS + api-client Mock adapter）；班级入口按 create_class 显隐；CI（build/test/typecheck）；版本锁定见 TECH_STACK v0.2 |
 | T-016 | P0.5.1 契约一致性 hotfix（ADR-013） | done | trae | 高 | T-013 | Human 复审三严重问题修复：material-pack/session-composition/material-snapshot 升 0.2.1；状态词汇两层统一；T-003 过期锁删除；18 例 fixtures 全通过 |
-| T-017 | UI-2：Mock 四旅程 | doing | kimi | 高 | T-015 | Human 指派前端线移交 kimi（Kimi K3）；聊天/学习/教师助手/电脑工作台 × 正常/空白/加载/权限不足/离线/可恢复/不可恢复；交接包见 frontend/docs/HANDOFF.md（验收门 G1-G4） |
+| T-017 | UI-2：Mock 四旅程 | done | kimi | 高 | T-015 | 已合并 main（bb40ff9）；@llos/api-client 七态 LoadState（正常/空白/加载/权限不足/离线/可恢复/不可恢复）+ 稳定错误类型 + VIEW_MODELS 强制 ViewModel 集 + describeState 呈现描述符（20 测试，新增 17）；web 三旅程（聊天/学习/电脑工作台）与 mobile 三旅程（聊天/学习/教师助手）经统一 StateView 七态渲染；聊天永不显示学习进度（§6）；权限门模拟服务端重新授权（§2）；全 workspace 262 测试 + build/typecheck 绿；锁已释放 |
 | T-018 | P2a：编译器管线 + golden test | done | trae | 高 | T-014 | 已合并 main（cb1b6f6 + 47e159c）；@llos/compiler 三段管线（material.validate → pedagogical.plan → executable.lower，12 类型化错误码）；参考素材 de-hotel-checkin + 参考 DLC de.fsi-construction；30 测试（golden ×2/确定性/素材门 ×7/manifest 反例 ×7）；全 workspace 116 测试 + typecheck 绿；锁已释放。遗留 follow-up：claim 权重归一化、零框架包边界 |
 | T-019 | P2b：训练执行引擎 + FSRS 调度器 | done | trae | 高 | T-018 | 已合并 main（82e3c35 + b7d03b0）；core/src/runtime SessionExecutor（12 原语闭集、注册表事件产出、branch 条件路由、迭代/时长硬上限→typed abort、能力失败降级、$complete/$stop 终止符）+ core/src/scheduler FSRS（ts-fsrs 5.4，事件流重放重建 Card，低置信观察过滤）；25 新测试；.gitattributes 强制 LF（修复 T-018 golden 跨平台行尾缺陷）；全 workspace 141 测试绿；锁已释放。follow-up：SM-2 冷启动回退、branch 事实集扩展 |
 | T-020 | P2c：掌握判定引擎 + 学习曲线/薄弱点/难度投影 + CLI 完整循环 | done | trae | 高 | T-019 | 已合并 main（8d9cd51 + 6d3db5f）；core/src/policy/mastery（Evidence Policy 确定性解释器，五态判定 not_yet/provisional/learned/uncertain/lapsed + reason codes + supersedes 链 + 保留期延迟成功检测）+ 三投影（curve 按天分桶/weak-spots 可解释排序含逾期复习/difficulty tier）+ scripts/demo-loop.mjs（`pnpm demo:loop`：编译→两轮执行→判定→投影→FSRS，37 事件闭环）；24 新测试（mastery 12 + projections 12）；全 workspace 161 测试 + typecheck 绿；锁已释放 |
@@ -76,6 +76,7 @@
 | T-016 | P0.5.1 契约一致性 hotfix | 2026-08-15 | trae |
 | T-014 | 契约代码化管线 + Core/Gateway 骨架 | 2026-08-16 | trae |
 | T-015 | UI-1 前端工程骨架 | 2026-08-16 | trae |
+| T-017 | UI-2 Mock 四旅程七态 | 2026-08-16 | kimi |
 
 ---
 
@@ -111,6 +112,7 @@
 | 2026-08-16 | TRAE | T-023 认领（P3c 发音证据入 Core 闭环 + Piper TTS Provider）→ doing；分支 feature/trae-speech-core-loop；范围 core/src/（发音观察桥接）+ gateway/src/（Piper descriptor + 示范朗读 adapter）+ scripts/（指标 harness）；桥接层原则：speech 输出证据，Core 确定性转换，维度弃权→低置信观察，不伪造测量置信度 |
 | 2026-08-16 | TRAE | T-023 完成 → review：core/src/speech 桥接（scored→scalar 观察/abstained→显式弃权/无 claim 绑定跳过/弃权原因码 9 类映射闭合枚举/observation.recorded 事件幂等键去重/经 reducer 直接流转）；gateway Piper TTS（descriptor 契约校验+注册，capability 仅 tts.demo_reading，Fake adapter 内容寻址缓存，§10"非母语教师标准"红线写入 description）；`pnpm metrics:speech` §13.2 Stage 0 四门全过（高置信精确率 1.0≥0.9 / FCR 0.0≤0.05 / 对齐成功率 1.0≥0.95 / 单证据只 suspected）；12 新测试，全 workspace 262 测试 + typecheck 绿；待 Human 确认合并 feature/trae-speech-core-loop |
 | 2026-08-16 | Human | 确认 T-023 合并：feature/trae-speech-core-loop → main（164e6f9，fast-forward）；T-023 置 done，锁已释放；**P3 阶段（T-021/022/023）全部完成**；下一步 P4（市场/账户）或 kimi T-017 验收 |
+| 2026-08-16 | kimi | T-017 完成：UI-2 Mock 四旅程七态——@llos/api-client 七态 LoadState（正常/空白/加载/权限不足/离线/可恢复/不可恢复）+ 稳定错误类型 + VIEW_MODELS 强制 ViewModel 集 + describeState 呈现描述符；web（聊天/学习/电脑工作台）与 mobile（聊天/学习/教师助手）六旅程经统一 StateView 渲染；聊天不显示学习进度（§6）；权限门=服务端重新授权模拟（§2）；api-client 20 测试（新增 17）；全 workspace 262 测试 + build/typecheck 绿；提交 bb40ff9 直提 main（本地 .git 分支创建损坏，经 Human 指示直接继续），锁已释放 |
 
 ---
 
