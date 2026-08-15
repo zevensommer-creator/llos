@@ -39,6 +39,8 @@ export interface MarketListing {
   publisher_id: string;
   published_at: string;
   updated_at: string;
+  /** §6.9 创作者下架：停止新获取；已获取用户保留访问权（授权不受影响）。 */
+  delisted_at?: string;
 }
 
 export interface RatingSummary {
@@ -82,7 +84,9 @@ export type MarketErrorCode =
   | "pricing_not_available"
   | "review_requires_entitlement"
   | "invalid_rating"
-  | "invalid_listing_input";
+  | "invalid_listing_input"
+  | "listing_delisted"
+  | "listing_already_delisted";
 
 export class MarketError extends Error {
   readonly code: MarketErrorCode;
@@ -179,6 +183,12 @@ export class MarketService {
         `listing ${listingId} can only be updated by its publisher`,
       );
     }
+    if (listing.delisted_at) {
+      throw new MarketError(
+        "listing_delisted",
+        `listing ${listingId} is delisted; delisted listings no longer receive updates`,
+      );
+    }
     const updated: MarketListing = Object.freeze({
       ...listing,
       dlc_ref: { ...dlcRef },
@@ -188,8 +198,32 @@ export class MarketService {
     return updated;
   }
 
+  // §6.9 创作者主动下架：目录不再展示、新用户不能获取；已获取用户
+  // （买断/有效订阅）的授权完全不受影响——entitlement 存储不做任何回收。
+  delist(publisherId: string, listingId: string): MarketListing {
+    const listing = this.#requireListing(listingId);
+    if (listing.publisher_id !== publisherId) {
+      throw new MarketError(
+        "not_listing_publisher",
+        `listing ${listingId} can only be delisted by its publisher`,
+      );
+    }
+    if (listing.delisted_at) {
+      throw new MarketError(
+        "listing_already_delisted",
+        `listing ${listingId} was already delisted at ${listing.delisted_at}`,
+      );
+    }
+    const now = this.#clock();
+    const delisted: MarketListing = Object.freeze({ ...listing, delisted_at: now, updated_at: now });
+    this.#listings.set(listingId, delisted);
+    return delisted;
+  }
+
   query(query: CatalogQuery = {}): ListingView[] {
-    const views = [...this.#listings.values()].map((listing) => this.#viewOf(listing));
+    const views = [...this.#listings.values()]
+      .filter((listing) => !listing.delisted_at)
+      .map((listing) => this.#viewOf(listing));
     const search = query.search?.trim().toLowerCase();
     const filtered = views.filter(({ listing }) => {
       if (query.language && listing.language !== query.language) return false;
@@ -238,7 +272,14 @@ export class MarketService {
     const now = this.#clock();
     const existing = this.#entitlements.get(accountId, resource);
     if (existing && this.#entitlements.has(accountId, resource, now)) {
+      // 已获取用户不受下架影响（§6.9：保留访问权）。
       return { entitlement: existing, view: this.#viewOf(listing), already_acquired: true };
+    }
+    if (listing.delisted_at) {
+      throw new MarketError(
+        "listing_delisted",
+        `listing ${listingId} is delisted; new acquisitions stopped at ${listing.delisted_at} (existing owners keep access, product_spec §6.9)`,
+      );
     }
     const entitlement = this.#entitlements.grant(accountId, resource, now);
     this.#downloads.set(listingId, (this.#downloads.get(listingId) ?? 0) + 1);

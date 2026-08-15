@@ -20,7 +20,9 @@
   "devDependencies": {
     "@llos/compiler": "workspace:*",
     "@llos/core": "workspace:*",
+    "@llos/gateway": "workspace:*",
     "@llos/market": "workspace:*",
-    "@llos/speech": "workspace:*"
+    "@llos/speech": "workspace:*",
+    "@llos/studio": "workspace:*"
   }
 }

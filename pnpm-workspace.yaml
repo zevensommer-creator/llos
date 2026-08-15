@@ -5,6 +5,7 @@ packages:
   - gateway
   - market
   - speech
+  - studio
   - frontend/apps/*
   - frontend/packages/*
 minimumReleaseAgeExclude:

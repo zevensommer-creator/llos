@@ -14,12 +14,18 @@ importers:
       '@llos/core':
         specifier: workspace:*
         version: link:core
+      '@llos/gateway':
+        specifier: workspace:*
+        version: link:gateway
       '@llos/market':
         specifier: workspace:*
         version: link:market
       '@llos/speech':
         specifier: workspace:*
         version: link:speech
+      '@llos/studio':
+        specifier: workspace:*
+        version: link:studio
 
   compiler:
     dependencies:
@@ -194,6 +200,31 @@ importers:
       '@llos/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  studio:
+    dependencies:
+      '@llos/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@llos/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@llos/core':
+        specifier: workspace:*
+        version: link:../core
+      '@llos/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@llos/market':
+        specifier: workspace:*
+        version: link:../market
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

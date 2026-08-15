@@ -1,0 +1,23 @@
+{
+  "name": "@llos/studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLOS Studio: creator-facing ingestion pipeline, draft lifecycle, sandbox trial, invisible versioning and publish handoff (product_spec ch.6)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@llos/contracts": "workspace:*",
+    "@llos/core": "workspace:*",
+    "@llos/compiler": "workspace:*",
+    "@llos/gateway": "workspace:*",
+    "@llos/market": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
