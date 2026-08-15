@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:material-pack:0.2.0",
+  "$id": "urn:language-learning-platform:schema:material-pack:0.2.1",
   "title": "Material Pack",
-  "description": "Versioned, licensable material layer consumed by DLC compilers. v0.2.0: CEFR levels and registers become optional DLC/extension-declared references instead of universal Core truth; all annotation values use TypedValue; extensions use ExtensionEnvelope; generation lifecycle recorded (spec §2.7, §4.1).",
+  "description": "Versioned, licensable material layer consumed by DLC compilers. v0.2.0: CEFR levels and registers become optional DLC/extension-declared references instead of universal Core truth; all annotation values use TypedValue; extensions use ExtensionEnvelope; generation lifecycle recorded (spec §2.7, §4.1). v0.2.1: adds required distribution_scope (ADR-012); license is optional for internal scope, mandatory (pack-level and asset-level) for public scope (ADR-013).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,17 +11,17 @@
     "version",
     "display_name",
     "pack_kind",
+    "distribution_scope",
     "languages",
     "compatibility",
     "semantic_frames",
     "assets",
     "generation_policy",
-    "license",
     "provenance"
   ],
   "properties": {
     "schema_version": {
-      "const": "0.2.0"
+      "const": "0.2.1"
     },
     "pack_id": {
       "$ref": "#/$defs/Identifier"
@@ -48,6 +48,10 @@
         "annotation_overlay",
         "mixed"
       ]
+    },
+    "distribution_scope": {
+      "enum": ["internal", "public"],
+      "description": "Distribution scope (ADR-012/ADR-013). internal: first-generation internal use—license optional, copyright process deferred. public: future public distribution—pack-level and asset-level license required, ADR-009 takedown process applies."
     },
     "languages": {
       "type": "array",
@@ -161,6 +165,24 @@
       "$ref": "#/$defs/Extensions"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "distribution_scope": { "const": "public" }
+        },
+        "required": ["distribution_scope"]
+      },
+      "then": {
+        "required": ["license"],
+        "properties": {
+          "assets": {
+            "items": { "required": ["license"] }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "Identifier": {
       "type": "string",
@@ -401,7 +423,7 @@
     "Asset": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "uri", "media_type", "sha256", "size_bytes", "license"],
+      "required": ["id", "uri", "media_type", "sha256", "size_bytes"],
       "properties": {
         "id": { "$ref": "#/$defs/Identifier" },
         "uri": { "type": "string", "format": "uri" },
@@ -588,11 +610,12 @@
   },
   "examples": [
     {
-      "schema_version": "0.2.0",
+      "schema_version": "0.2.1",
       "pack_id": "material.de.hotel-checkin",
       "version": "0.2.0",
       "display_name": "Hotel Check-in Scenario",
       "pack_kind": "semantic_scenario",
+      "distribution_scope": "public",
       "languages": ["de-DE"],
       "level_refs": [
         {

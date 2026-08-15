@@ -781,7 +781,7 @@ docs/adr/ADR-FRONTEND-STACK.md
 5. 伪造移动请求调用电脑专属写操作时，服务端拒绝。
 6. ChatSession和LearningSession明确区分。
 7. 移动端不显示虚假的全局mastery百分比。
-8. `provisional`、`satisfied`、`conflicted`、`stale`均有界面。
+8. 状态词汇两层分开呈现：MasteryDecision 判定状态 `not_yet/provisional/learned/uncertain/lapsed` 与 LearnerStateProjection 证据状态 `no_evidence/insufficient/supported/conflicted/stale` 各有界面映射；禁止把投影证据状态当作判定状态展示，用户可见的"已学会"措辞只能来自 MasteryDecision（product_spec §3.3、VIEW_MODELS.md）。
 9. abstain不显示为学习者失败。
 10. 麦克风拒绝后存在替代路径或明确暂停。
 11. 上传重试不生成重复LearningEvent。

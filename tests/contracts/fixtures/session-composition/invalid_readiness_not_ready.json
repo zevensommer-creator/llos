@@ -1,9 +1,9 @@
 {
   "schema_version": "0.2.1",
-  "session_id": "sess_20260815_0002",
+  "session_id": "sess_20260815_0004",
   "mode": "learning",
   "learner_ref": "learner_alice",
-  "created_at": "2026-08-15T10:05:00+08:00",
+  "created_at": "2026-08-15T10:15:00+08:00",
   "dlc_ref": {
     "id": "dlc_fsi_german_a1",
     "version": "1.0.0",
@@ -27,7 +27,7 @@
   "core_version": "0.2.0",
   "readiness": {
     "core_ready": true,
-    "active_dlc_valid": true,
+    "active_dlc_valid": false,
     "material_snapshot_valid": true,
     "compiled_ir_valid": true,
     "entitlement_valid": true,

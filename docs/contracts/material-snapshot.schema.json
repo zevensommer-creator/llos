@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:material-snapshot:0.2.0",
+  "$id": "urn:language-learning-platform:schema:material-snapshot:0.2.1",
   "title": "Material Snapshot",
-  "description": "Immutable frozen snapshot of resolved material. Whatever the source (stored pack, upload, LLM generation), material must be frozen into a snapshot BEFORE entering DLC compilation. Records full provenance: source, instruction, random seed, provider/model version, content hash, schema validation result, safety/quality checks. Same snapshot + same DLC/state/seed = reproducible compilation input (spec §2.7).",
+  "description": "Immutable frozen snapshot of resolved material. Whatever the source (stored pack, upload, LLM generation), material must be frozen into a snapshot BEFORE entering DLC compilation. Records full provenance: source, instruction, random seed, provider/model version, content hash, schema validation result, safety/quality checks. Same snapshot + same DLC/state/seed = reproducible compilation input (spec §2.7). v0.2.1: provenance is contract-enforced—generation is required when source is generated_random/generated_instructed, and random_seed is required within generation when source is generated_random (ADR-013).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,7 +18,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.2.0"
+      "const": "0.2.1"
     },
     "snapshot_id": {
       "$ref": "#/$defs/Identifier"
@@ -118,6 +118,30 @@
       "$ref": "#/$defs/Extensions"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "source": { "enum": ["generated_random", "generated_instructed"] }
+        },
+        "required": ["source"]
+      },
+      "then": { "required": ["generation"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": { "const": "generated_random" }
+        },
+        "required": ["source"]
+      },
+      "then": {
+        "properties": {
+          "generation": { "required": ["random_seed"] }
+        }
+      }
+    }
+  ],
   "$defs": {
     "Identifier": {
       "type": "string",

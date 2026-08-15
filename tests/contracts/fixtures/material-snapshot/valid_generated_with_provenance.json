@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.2.1",
+  "snapshot_id": "snap_000124",
+  "source": "generated_random",
+  "material_ref": {
+    "uri": "https://materials.internal/snap_000124.json",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "media_type": "application/json",
+    "schema_id": "material-pack",
+    "schema_version": "0.2.1"
+  },
+  "generation": {
+    "provider_id": "provider.deepseek",
+    "model_version": "deepseek-v3.1",
+    "template_version": "1.0.0",
+    "random_seed": 42
+  },
+  "content_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "schema_validation": {
+    "status": "valid",
+    "schema_id": "material-pack",
+    "schema_version": "0.2.1",
+    "validated_at": "2026-08-15T12:10:00Z"
+  },
+  "quality_checks": [],
+  "created_at": "2026-08-15T12:10:05Z",
+  "lifecycle": "ephemeral"
+}

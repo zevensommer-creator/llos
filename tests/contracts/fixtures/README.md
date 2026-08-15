@@ -1,7 +1,7 @@
 # 契约 Fixtures（正例 + 红线反例）
 
-> 对象：`docs/contracts/*.schema.json` v0.2.0。
-> 状态：**核心子集**（session-composition / learning-event / learning-observation / evidence-policy / mastery-decision）；P1 扩至全量 15 份 schema（BUILD_PLAN P0.5 剩余项）。
+> 对象：`docs/contracts/*.schema.json`（v0.2.0；material-pack / session-composition / material-snapshot 为 v0.2.1，ADR-013）。
+> 状态：核心子集（material-pack / material-snapshot / session-composition / learning-event / learning-observation / evidence-policy / mastery-decision）；P1 扩至全量 15 份 schema（BUILD_PLAN P0.5 剩余项）。
 
 ## 命名约定
 
@@ -26,6 +26,11 @@ uv run --with jsonschema python tests/contracts/validate_fixtures.py
 | `learning-observation/invalid_binary_missing_confidence.json` | 表现观察缺少测量置信度——表现与置信度必须分离且同时在场（spec §4.4/§5.2） |
 | `evidence-policy/invalid_missing_confidence_gate.json` | 证据政策缺少 `minimum_measurement_confidence` 门——评价器可靠性门是强制项（spec §5.5） |
 | `mastery-decision/invalid_permanent_score.json` | 永久布尔 + 聚合掌握分（`learned:true` + `mastery_score:0.86`）——禁止作为事实源存储（spec §5.1/§5.4） |
+| `session-composition/invalid_readiness_not_ready.json` | 就绪门含 false 的 LearningSession——三层就绪门由 schema 强制，未就绪只能以类型化错误拒绝创建（ADR-013） |
+| `material-snapshot/invalid_generated_missing_provenance.json` | `source=generated_random` 缺 `generation` 溯源（Provider/模型版本/种子）——LLM 产出永不脱离溯源进入编译输入（ADR-013） |
+| `material-pack/invalid_public_no_license.json` | `distribution_scope=public` 缺 license——公开分发必须声明版权（ADR-012/013） |
+
+对应的放宽正例（内部第一代不因版权字段阻塞，ADR-012）：`material-pack/valid_internal_no_license.json`、`material-snapshot/valid_generated_with_provenance.json`。
 
 ## schema 无法表达、须由 Core 测试保证的语义红线
 

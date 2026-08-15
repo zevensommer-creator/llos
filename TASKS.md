@@ -35,8 +35,9 @@
 | T-011 | 产品/计划/协议文档同步更新 | done | trae | 高 | T-008/009/010 | product_spec v0.6 + BUILD_PLAN v1.1（P0.5 + 主线 C）+ AGENTS v3.0（动态认领）+ README |
 | T-012 | 契约 fixtures 核心子集 | done | trae | 中 | T-009 | tests/contracts/fixtures/：5 类 schema 正例 + 红线反例；全量扩至 P1 |
 | T-013 | GitHub 推送留档（本轮全部变更） | done | trae | 高 | T-008~T-012 | 提交 5e4667d 已推送（48 文件）；设计阶段留档关闭 |
-| T-014 | P1：契约代码化管线 | todo | 待认领 | 高 | T-013 | 15 schema + 注册表 → 类型/校验代码 + fixtures harness（BUILD_PLAN P1） |
-| T-015 | UI-1：前端工程骨架 | todo | 待认领 | 高 | T-013 | pnpm workspace + Expo + React Web + tokens + CI；可与 T-014 并行（BUILD_PLAN 主线 C） |
+| T-014 | P1：契约代码化管线 | todo | 待认领 | 高 | T-016 | 15 schema + 注册表 → 类型/校验代码 + fixtures harness（BUILD_PLAN P1）；hotfix 已扫清，可启动 |
+| T-015 | UI-1：前端工程骨架 | todo | 待认领 | 高 | T-013 | pnpm workspace + Expo + React Web + tokens + CI；可与 T-014 并行（不依赖后端） |
+| T-016 | P0.5.1 契约一致性 hotfix（ADR-013） | done | trae | 高 | T-013 | Human 复审三严重问题修复：material-pack/session-composition/material-snapshot 升 0.2.1；状态词汇两层统一；T-003 过期锁删除；18 例 fixtures 全通过 |
 
 ---
 
@@ -65,6 +66,7 @@
 | T-011 | 产品/计划/协议文档同步 | 2026-08-15 | trae |
 | T-012 | 契约 fixtures 核心子集 | 2026-08-15 | trae |
 | T-013 | GitHub 推送留档 | 2026-08-15 | trae |
+| T-016 | P0.5.1 契约一致性 hotfix | 2026-08-15 | trae |
 
 ---
 
@@ -77,6 +79,7 @@
 | 2026-08-15 | TRAE | T-007 完成：新建 导出/ 与 暂存/；删除旧 src/，建模块目录；.gitignore 增加 导出/ |
 | 2026-08-15 | TRAE | T-003 转 review：设计阶段完成，待 Human 全套审核 |
 | 2026-08-15 | TRAE | Human 终审通过（"开始吧"）：T-003 转 done；登记 T-008~T-015；T-004/T-005 改为待认领（BUILD_PLAN P4 覆盖）；owner 改用小写 agent_id（AGENTS v3.0） |
+| 2026-08-15 | TRAE | Human 复审 hotfix（ADR-013）：T-016 登记并完成——三份契约升 0.2.1、状态词汇统一、待决表更新、T-003 过期锁删除；T-014/T-015 解除阻塞 |
 
 ---
 

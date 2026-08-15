@@ -176,7 +176,7 @@ d:\LLOS workplace public\
 | `pronunciation-assessment.schema.json` | 发音评价：证据、置信度、弃权、误纠正控制 |
 | `agent-work.schema.json` | Agent 工作：目标、证据、工具、预算、守卫、结果 |
 
-契约正例与红线反例：`tests/contracts/fixtures/`（P1 扩至全量）。
+契约版本：`material-pack` / `session-composition` / `material-snapshot` 为 **0.2.1**（ADR-013 hotfix），其余 12 份为 0.2.0。契约正例与红线反例：`tests/contracts/fixtures/`（P1 扩至全量）。
 
 ## 12. 模块边界
 

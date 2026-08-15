@@ -2,10 +2,11 @@
 
 > **目的**：编码开始前的最后准备文档。把已定案的产品与架构设计拆解为可执行步骤，明确每步的目标、交付物、验收标准、负责者与依赖。
 > **范围**：仅第一代产品（第二批次语言与平台算力计费不在范围内，见 P9）。
-> **版本**：1.1 · **日期**：2026-08-15 · **维护**：Human + TRAE
+> **版本**：1.2 · **日期**：2026-08-15 · **维护**：Human + TRAE
 > **上游文档**：[`LANGUAGE_PLATFORM_SPEC.md`](./LANGUAGE_PLATFORM_SPEC.md)（怎么建）· [`product_spec.md`](./product_spec.md)（建什么）· `../AGENTS.md`（建的纪律）· [`LLOS_MOBILE_UI_FIGMA_TRAE_INSTRUCTIONS_ZH.md`](./LLOS_MOBILE_UI_FIGMA_TRAE_INSTRUCTIONS_ZH.md)（客户端线）
 >
 > **v1.1 变更**：新增 P0.5 契约冻结（契约已全量升至 v0.2.0：15 份 schema + 事件注册表）；新增主线 C 客户端线（UI-0~UI-6）；前端路径定为"电脑 Web 先行交付、移动端以真机为验收、PWA 仅为备用入口"；分工由固定指派改为动态认领（AGENTS.md v3.0）。
+> **v1.2 变更**：2026-08-15 Human 复审：总体通过，契约冻结批准生效；新增 **P0.5.1 契约一致性 hotfix**（material-pack/session-composition/material-snapshot 升 0.2.1，ADR-013），状态词汇两层统一，过期任务锁清理。
 
 ---
 
@@ -53,8 +54,19 @@
   - 新增 9 份 schema：session-composition、learning-claim、evidence-policy、learning-observation、learning-event、learner-state-projection、mastery-decision、material-request、material-snapshot；
   - 学习事件类型闭合注册表 `learning-event-registry.json`（schema enum 为其镜像）；
   - 核心子集 fixtures（正例 + 红线反例）：`tests/contracts/fixtures/`。
-- **剩余**：Human 冻结批准；fixtures 扩至全量（P1 内完成）。
+- **剩余**：~~Human 冻结批准~~（已批准，2026-08-15 复审通过，随 P0.5.1 落实生效）；fixtures 扩至全量（P1 内完成）。
 - **冻结后规则**：schema 变更走 ADR + schema 版本号升级 + Human 批准；`contracts/` 生成代码只随 schema 变更。
+
+### P0.5.1 契约一致性 hotfix（ADR-013，已完成 2026-08-15）
+
+- **来源**：Human 复审意见（三个严重 + 术语 + 文档状态）。
+- **修复**：
+  1. `material-pack` 0.2.1：新增必填 `distribution_scope`（internal/public）；`license` 改为 public 分发时必填（包级 + 资产级），内部第一代不再被版权字段阻塞（ADR-012 落实）；
+  2. `session-composition` 0.2.1：六个就绪门全部 `const: true`——未就绪组合无法通过 schema，只能以类型化错误拒绝创建（三层就绪门契约强制）；
+  3. `material-snapshot` 0.2.1：`source=generated_random/generated_instructed` 必须携带 `generation`（Provider/模型版本/模板版本），`generated_random` 还必须携带 `random_seed`（生成溯源落地）；
+  4. 状态词汇两层统一：判定态（MasteryDecision）与证据态（Projection）在客户端验收中分开命名，不得混用；
+  5. 文档状态与任务锁同步：product_spec 待决表更新、T-003 过期锁删除。
+- **验收**：fixtures 新增 5 例（readiness=false 拒绝、生成素材缺溯源拒绝、internal 无 license 通过、public 无 license 拒绝、带溯源生成快照通过），全部 18 例通过校验。
 
 ### P1 契约代码化与系统骨架（对应基线 Phase 1）
 

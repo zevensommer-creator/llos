@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:session-composition:0.2.0",
+  "$id": "urn:language-learning-platform:schema:session-composition:0.2.1",
   "title": "Session Composition",
-  "description": "Discriminated union of chat and learning session compositions. mode=chat requires dlc_ref=null and never produces learning state; mode=learning requires the full three-layer readiness composition (spec §2.6).",
+  "description": "Discriminated union of chat and learning session compositions. mode=chat requires dlc_ref=null and never produces learning state; mode=learning requires the full three-layer readiness composition (spec §2.6). v0.2.1: the readiness gate is schema-enforced—all six flags must be true for a valid LearningSession; a not-ready composition must be rejected at creation as a typed error, never serialized as a validated instance (ADR-013).",
   "oneOf": [
     {
       "$ref": "#/$defs/ChatSession"
@@ -116,7 +116,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "0.2.0"
+          "const": "0.2.1"
         },
         "session_id": {
           "$ref": "#/$defs/Identifier"
@@ -147,6 +147,7 @@
     },
     "Readiness": {
       "type": "object",
+      "description": "Three-layer readiness gate, schema-enforced since v0.2.1 (ADR-013): every flag is const true, so an instance that passes validation necessarily passed all six gates. Not-ready states are represented by typed session-creation rejections, never by a validated LearningSession carrying false flags.",
       "additionalProperties": false,
       "required": [
         "core_ready",
@@ -158,22 +159,28 @@
       ],
       "properties": {
         "core_ready": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         },
         "active_dlc_valid": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         },
         "material_snapshot_valid": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         },
         "compiled_ir_valid": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         },
         "entitlement_valid": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         },
         "provider_capabilities_ok_or_explicit_fallback": {
-          "type": "boolean"
+          "type": "boolean",
+          "const": true
         }
       }
     },
@@ -197,7 +204,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "0.2.0"
+          "const": "0.2.1"
         },
         "session_id": {
           "$ref": "#/$defs/Identifier"
