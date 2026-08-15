@@ -34,7 +34,7 @@
 | T-010 | UI-0 规格冻结（客户端表面） | done | trae | 高 | T-003 | frontend/docs 五件套 + ADR-CLIENT-SURFACES + ADR-FRONTEND-STACK；Figma 文件本体未建（FIGMA_PENDING）；§13 八项真机决策待 Human |
 | T-011 | 产品/计划/协议文档同步更新 | done | trae | 高 | T-008/009/010 | product_spec v0.6 + BUILD_PLAN v1.1（P0.5 + 主线 C）+ AGENTS v3.0（动态认领）+ README |
 | T-012 | 契约 fixtures 核心子集 | done | trae | 中 | T-009 | tests/contracts/fixtures/：5 类 schema 正例 + 红线反例；全量扩至 P1 |
-| T-013 | GitHub 推送留档（本轮全部变更） | doing | trae | 高 | T-008~T-012 | 推送完成后关闭 |
+| T-013 | GitHub 推送留档（本轮全部变更） | done | trae | 高 | T-008~T-012 | 提交 5e4667d 已推送（48 文件）；设计阶段留档关闭 |
 | T-014 | P1：契约代码化管线 | todo | 待认领 | 高 | T-013 | 15 schema + 注册表 → 类型/校验代码 + fixtures harness（BUILD_PLAN P1） |
 | T-015 | UI-1：前端工程骨架 | todo | 待认领 | 高 | T-013 | pnpm workspace + Expo + React Web + tokens + CI；可与 T-014 并行（BUILD_PLAN 主线 C） |
 
@@ -64,6 +64,7 @@
 | T-010 | UI-0 规格冻结 | 2026-08-15 | trae |
 | T-011 | 产品/计划/协议文档同步 | 2026-08-15 | trae |
 | T-012 | 契约 fixtures 核心子集 | 2026-08-15 | trae |
+| T-013 | GitHub 推送留档 | 2026-08-15 | trae |
 
 ---
 
