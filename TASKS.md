@@ -39,7 +39,7 @@
 | T-015 | UI-1：前端工程骨架 | done | trae | 高 | T-013 | frontend/apps（Expo 57 移动 App Shell + Vite/React Web 工作台）+ frontend/packages（design-tokens 生成 RN/CSS + api-client Mock adapter）；班级入口按 create_class 显隐；CI（build/test/typecheck）；版本锁定见 TECH_STACK v0.2 |
 | T-016 | P0.5.1 契约一致性 hotfix（ADR-013） | done | trae | 高 | T-013 | Human 复审三严重问题修复：material-pack/session-composition/material-snapshot 升 0.2.1；状态词汇两层统一；T-003 过期锁删除；18 例 fixtures 全通过 |
 | T-017 | UI-2：Mock 四旅程 | doing | kimi | 高 | T-015 | Human 指派前端线移交 kimi（Kimi K3）；聊天/学习/教师助手/电脑工作台 × 正常/空白/加载/权限不足/离线/可恢复/不可恢复；交接包见 frontend/docs/HANDOFF.md（验收门 G1-G4） |
-| T-018 | P2a：编译器管线 + golden test | review | trae | 高 | T-014 | @llos/compiler 三段管线（material.validate → pedagogical.plan → executable.lower，类型化错误码）；参考素材 materials/reference/de-hotel-checkin + 参考 DLC dlc_reference/de.fsi-construction；30 测试：golden 快照 ×2、确定性（种子/时钟）、素材门 ×7（哈希/schema/版本/语言/引用完整性）、manifest 反例 ×7；全 workspace 116 测试 + typecheck 绿；分支 feature/trae-compiler-golden 待 Human 确认合并 main；训练执行引擎与 FSRS 为 T-019+ |
+| T-018 | P2a：编译器管线 + golden test | done | trae | 高 | T-014 | 已合并 main（cb1b6f6 + 47e159c）；@llos/compiler 三段管线（material.validate → pedagogical.plan → executable.lower，12 类型化错误码）；参考素材 de-hotel-checkin + 参考 DLC de.fsi-construction；30 测试（golden ×2/确定性/素材门 ×7/manifest 反例 ×7）；全 workspace 116 测试 + typecheck 绿；锁已释放。遗留 follow-up：claim 权重归一化、零框架包边界 |
 
 ---
 
@@ -89,6 +89,7 @@
 | 2026-08-16 | Human | 前端/UI 工作线移交新 Agent kimi（Kimi K3）：UI-2 起由 kimi 认领；交接包 frontend/docs/HANDOFF.md（含验收门 G1-G4 与阻塞项登记）；T-017 登记 |
 | 2026-08-16 | kimi | 认领 T-017（UI-2 Mock 四旅程）→ doing；G1 环境验证：前端线独立全绿（build/test/typecheck 通过，前端 6 测试过）。**发现 main 整体构建红**：@llos/compiler（T-018，trae 的 doing 任务，其 touched_paths）TS 报错未过——不属本任务范围，按 AGENTS §4 不改，需 trae 修复或挪 feature 分支 |
 | 2026-08-16 | TRAE | T-018 完成 → review：@llos/compiler 三段管线 + 参考素材/参考 DLC + 30 测试（golden ×2/确定性/素材门/manifest 反例）；回应 kimi 登记项——编译器 typecheck 已绿，全 workspace 116 测试通过；分支 feature/trae-compiler-golden 推送待审，合并 main 后释放锁 |
+| 2026-08-16 | Human | 确认 T-018 合并：feature/trae-compiler-golden → main（cb1b6f6 + merge 47e159c）；T-018 置 done，锁已释放；下一步 T-019 |
 
 ---
 
