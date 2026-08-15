@@ -50,6 +50,54 @@ export interface MarketEntry {
 }
 
 // ---------------------------------------------------------------------------
+// T-026: 市场流程（浏览/筛选 → 详情 → 获取 → 训练入口 → 评价）
+// 形状与 @llos/market 后端 CatalogQuery/ListingView 对齐；UI-4 换真实 adapter。
+// ---------------------------------------------------------------------------
+
+/** 市场查询条件（对齐后端 CatalogQuery：语言/难度/自由标签 AND/搜索/排序）。 */
+export interface MarketQuery {
+  language?: string;
+  difficulty?: string;
+  tags?: readonly string[];
+  search?: string;
+  sort?: "newest" | "rating_desc" | "downloads_desc";
+}
+
+/** DLC 详情视图（市场详情页）。 */
+export interface MarketListingDetail {
+  dlc_id: string;
+  title: string;
+  summary: string;
+  language: string;
+  difficulty: string;
+  tags: readonly string[];
+  price_model: "free" | "one_time" | "subscription";
+  rating_average: number | null;
+  rating_count: number;
+  downloads: number;
+  publisher_name: string;
+  published_at: string;
+  owned: boolean;
+  /** 评价门禁（product_spec §4.3：仅获取者可评价）；显示不是安全控制，服务端重新授权。 */
+  can_review: boolean;
+  my_review?: { rating: number; text?: string };
+}
+
+/** 获取结果。付费获取等待 P8（pricing_not_available）。 */
+export type AcquireOutcome =
+  | { status: "acquired" }
+  | { status: "already_owned" }
+  | { status: "payment_not_available"; price_model: "one_time" | "subscription" }
+  | { status: "not_found" };
+
+/** 评价结果。requires_entitlement = 评价门禁（未获取不得评价）。 */
+export type ReviewOutcome =
+  | { status: "submitted"; rating: number }
+  | { status: "requires_entitlement"; message: string }
+  | { status: "invalid_rating"; message: string }
+  | { status: "not_found" };
+
+// ---------------------------------------------------------------------------
 // UI-2: 七态加载模型（正常 / 空白 / 加载 / 权限不足 / 离线 / 可恢复失败 / 不可恢复失败）
 // ---------------------------------------------------------------------------
 
@@ -253,4 +301,10 @@ export interface ApiClient {
   loadLearningSession(): Promise<LoadState<LearningSessionView>>;
   loadTeacherDashboard(): Promise<LoadState<TeacherMobileDashboardViewModel>>;
   loadWorkbench(): Promise<LoadState<WorkbenchView>>;
+
+  /** T-026 市场流程：筛选查询 / 详情 / 获取 / 评价（门禁由服务端重新授权）。 */
+  queryMarket(query?: MarketQuery): Promise<readonly MarketEntry[]>;
+  getMarketListing(dlcId: string): Promise<MarketListingDetail | null>;
+  acquireListing(dlcId: string): Promise<AcquireOutcome>;
+  submitReview(dlcId: string, rating: number, text?: string): Promise<ReviewOutcome>;
 }

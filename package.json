@@ -9,7 +9,8 @@
     "typecheck": "pnpm -r typecheck",
     "contracts:generate": "pnpm --filter @llos/contracts generate",
     "metrics:speech": "node scripts/speech-metrics.mjs",
-    "demo:loop": "node scripts/demo-loop.mjs"
+    "demo:loop": "node scripts/demo-loop.mjs",
+    "e2e:p4": "node scripts/e2e-p4.mjs"
   },
   "packageManager": "pnpm@11.21.0",
   "engines": {
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@llos/compiler": "workspace:*",
     "@llos/core": "workspace:*",
+    "@llos/market": "workspace:*",
     "@llos/speech": "workspace:*"
   }
 }

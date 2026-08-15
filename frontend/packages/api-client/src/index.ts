@@ -1,5 +1,6 @@
 export type {
   Account,
+  AcquireOutcome,
   ActivityViewModel,
   ApiClient,
   ApiError,
@@ -19,8 +20,11 @@ export type {
   LoadScenario,
   LoadState,
   MarketEntry,
+  MarketListingDetail,
+  MarketQuery,
   MasteryStatus,
   MaterialSnapshotSummary,
+  ReviewOutcome,
   SessionMode,
   SessionViewModel,
   SyncQueueStatusViewModel,
@@ -29,5 +33,5 @@ export type {
   WorkbenchSection,
   WorkbenchView,
 } from "./types.js";
-export { MockApiClient, type MockApiClientOptions } from "./mock.js";
+export { MockApiClient, resetMockMarket, type MockApiClientOptions } from "./mock.js";
 export { ALL_STATE_KINDS, describeState, type StatePresentation } from "./presentation.js";

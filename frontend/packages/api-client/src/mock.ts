@@ -1,9 +1,11 @@
 import type {
   Account,
+  AcquireOutcome,
   ApiClient,
   ApiError,
   CapabilityId,
   ChatSessionView,
+  EntitlementViewModel,
   HomeCard,
   HomeOverview,
   JourneyId,
@@ -11,6 +13,9 @@ import type {
   LoadScenario,
   LoadState,
   MarketEntry,
+  MarketListingDetail,
+  MarketQuery,
+  ReviewOutcome,
   TeacherMobileDashboardViewModel,
   WorkbenchSection,
   WorkbenchView,
@@ -41,6 +46,130 @@ const UNRECOVERABLE: ApiError = Object.freeze({
   code: "snapshot_incompatible",
   message: "内容版本不兼容，需要重新获取",
 });
+
+// ---------------------------------------------------------------------------
+// T-026: 模块级市场状态。useJourneyState 每次加载都会新建 MockApiClient，
+// 获取/评价等写操作必须跨实例可见，故状态放在模块层（Mock 层模拟服务端）。
+// resetMockMarket() 恢复种子数据，供测试隔离。
+// ---------------------------------------------------------------------------
+
+interface MarketListingRecord {
+  dlc_id: string;
+  title: string;
+  summary: string;
+  language: string;
+  difficulty: string;
+  tags: readonly string[];
+  price_model: "free" | "one_time" | "subscription";
+  publisher_name: string;
+  published_at: string;
+  downloads: number;
+}
+
+interface MarketAccountState {
+  owned: Set<string>;
+  /** 一用户一评，覆盖更新（product_spec §4.3）。 */
+  reviews: Map<string, { rating: number; text?: string }>;
+}
+
+interface MarketStore {
+  listings: Map<string, MarketListingRecord>;
+  accounts: Map<string, MarketAccountState>;
+}
+
+function seedListings(): MarketListingRecord[] {
+  return [
+    {
+      dlc_id: "dlc.fsi-german-a1",
+      title: "FSI 德语发音基础",
+      summary: "长短元音、前圆唇元音与 ich-Laut/ach-Laut 的听辨与跟读训练，德语首发内容。",
+      language: "de",
+      difficulty: "A1",
+      tags: ["发音", "基础"],
+      price_model: "free",
+      publisher_name: "LLOS 参考内容组",
+      published_at: "2026-08-01T09:00:00Z",
+      downloads: 128,
+    },
+    {
+      dlc_id: "dlc.de-hotel-survival",
+      title: "酒店德语速成",
+      summary: "入住、问询与退房场景的替换训练，配套 de-hotel-checkin 参考素材。",
+      language: "de",
+      difficulty: "A1",
+      tags: ["旅行", "酒店"],
+      price_model: "free",
+      publisher_name: "LLOS 参考内容组",
+      published_at: "2026-08-12T10:00:00Z",
+      downloads: 36,
+    },
+    {
+      dlc_id: "dlc.german-b1-grammar",
+      title: "德语 B1 语法强化",
+      summary: "从句语序与格位系统的证据驱动训练（订阅制示例，付费获取见 P8）。",
+      language: "de",
+      difficulty: "B1",
+      tags: ["语法", "强化"],
+      price_model: "subscription",
+      publisher_name: "王老师（已认证）",
+      published_at: "2026-08-05T08:00:00Z",
+      downloads: 61,
+    },
+    {
+      dlc_id: "dlc.french-start",
+      title: "法语入门（第二批次预览）",
+      summary: "第二批次语言预览内容（买断制示例，付费获取见 P8）。",
+      language: "fr",
+      difficulty: "A1",
+      tags: ["入门"],
+      price_model: "one_time",
+      publisher_name: "LLOS 参考内容组",
+      published_at: "2026-08-10T09:00:00Z",
+      downloads: 12,
+    },
+  ];
+}
+
+function seedStore(): MarketStore {
+  const listings = new Map<string, MarketListingRecord>();
+  for (const listing of seedListings()) listings.set(listing.dlc_id, listing);
+  const accounts = new Map<string, MarketAccountState>();
+  for (const accountId of ["account.mock.learner", "account.mock.teacher"]) {
+    accounts.set(accountId, { owned: new Set(["dlc.fsi-german-a1"]), reviews: new Map() });
+  }
+  return { listings, accounts };
+}
+
+let MARKET_STORE: MarketStore = seedStore();
+
+/** 恢复市场种子数据（测试隔离用）。 */
+export function resetMockMarket(): void {
+  MARKET_STORE = seedStore();
+}
+
+function marketStateFor(accountId: string): MarketAccountState {
+  let state = MARKET_STORE.accounts.get(accountId);
+  if (!state) {
+    state = { owned: new Set(), reviews: new Map() };
+    MARKET_STORE.accounts.set(accountId, state);
+  }
+  return state;
+}
+
+function ratingSummaryFor(dlcId: string): { average: number | null; count: number } {
+  let total = 0;
+  let count = 0;
+  for (const state of MARKET_STORE.accounts.values()) {
+    const review = state.reviews.get(dlcId);
+    if (review) {
+      total += review.rating;
+      count += 1;
+    }
+  }
+  return count === 0
+    ? { average: null, count: 0 }
+    : { average: Math.round((total / count) * 100) / 100, count };
+}
 
 /**
  * Deterministic, network-free ApiClient for UI-1/UI-2. Real adapter arrives at
@@ -85,13 +214,113 @@ export class MockApiClient implements ApiClient {
   }
 
   listMarket(): Promise<readonly MarketEntry[]> {
-    return Promise.resolve(
-      Object.freeze([
-        { dlc_id: "dlc.fsi-german-a1", title: "FSI 德语发音基础", language: "de", difficulty: "A1", price_model: "free", owned: true },
-        { dlc_id: "dlc.german-b1-grammar", title: "德语 B1 语法强化", language: "de", difficulty: "B1", price_model: "subscription", owned: false },
-        { dlc_id: "dlc.french-start", title: "法语入门（第二批次预览）", language: "fr", difficulty: "A1", price_model: "one_time", owned: false },
-      ]),
-    );
+    return this.queryMarket();
+  }
+
+  // -------------------------------------------------------------------------
+  // T-026 市场流程（Mock 层模拟服务端：门禁结果与 @llos/market 语义一致）
+  // -------------------------------------------------------------------------
+
+  queryMarket(query: MarketQuery = {}): Promise<readonly MarketEntry[]> {
+    const state = marketStateFor(this.#account.account_id);
+    const search = query.search?.trim().toLowerCase();
+    const entries = [...MARKET_STORE.listings.values()]
+      .filter((listing) => {
+        if (query.language && listing.language !== query.language) return false;
+        if (query.difficulty && listing.difficulty !== query.difficulty) return false;
+        if (query.tags?.length && !query.tags.every((tag) => listing.tags.includes(tag))) return false;
+        if (search) {
+          const inTitle = listing.title.toLowerCase().includes(search);
+          const inTags = listing.tags.some((tag) => tag.toLowerCase().includes(search));
+          if (!inTitle && !inTags) return false;
+        }
+        return true;
+      })
+      .map((listing) => ({
+        dlc_id: listing.dlc_id,
+        title: listing.title,
+        language: listing.language,
+        difficulty: listing.difficulty,
+        price_model: listing.price_model,
+        owned: state.owned.has(listing.dlc_id),
+      }));
+    const sort = query.sort ?? "newest";
+    entries.sort((a, b) => {
+      const la = MARKET_STORE.listings.get(a.dlc_id);
+      const lb = MARKET_STORE.listings.get(b.dlc_id);
+      if (!la || !lb) return 0;
+      if (sort === "rating_desc") {
+        const ra = ratingSummaryFor(a.dlc_id);
+        const rb = ratingSummaryFor(b.dlc_id);
+        const avgA = ra.average ?? -1;
+        const avgB = rb.average ?? -1;
+        if (avgB !== avgA) return avgB - avgA;
+        return rb.count - ra.count;
+      }
+      if (sort === "downloads_desc") {
+        return lb.downloads - la.downloads;
+      }
+      return lb.published_at.localeCompare(la.published_at);
+    });
+    return Promise.resolve(Object.freeze(entries));
+  }
+
+  getMarketListing(dlcId: string): Promise<MarketListingDetail | null> {
+    const listing = MARKET_STORE.listings.get(dlcId);
+    if (!listing) return Promise.resolve(null);
+    const state = marketStateFor(this.#account.account_id);
+    const owned = state.owned.has(dlcId);
+    const { average, count } = ratingSummaryFor(dlcId);
+    const mine = state.reviews.get(dlcId);
+    const detail: MarketListingDetail = {
+      dlc_id: listing.dlc_id,
+      title: listing.title,
+      summary: listing.summary,
+      language: listing.language,
+      difficulty: listing.difficulty,
+      tags: [...listing.tags],
+      price_model: listing.price_model,
+      rating_average: average,
+      rating_count: count,
+      downloads: listing.downloads,
+      publisher_name: listing.publisher_name,
+      published_at: listing.published_at,
+      owned,
+      can_review: owned,
+      my_review: mine ? { rating: mine.rating, text: mine.text } : undefined,
+    };
+    return Promise.resolve(detail);
+  }
+
+  acquireListing(dlcId: string): Promise<AcquireOutcome> {
+    const listing = MARKET_STORE.listings.get(dlcId);
+    if (!listing) return Promise.resolve({ status: "not_found" });
+    if (listing.price_model !== "free") {
+      return Promise.resolve({ status: "payment_not_available", price_model: listing.price_model });
+    }
+    const state = marketStateFor(this.#account.account_id);
+    if (state.owned.has(dlcId)) return Promise.resolve({ status: "already_owned" });
+    state.owned.add(dlcId);
+    listing.downloads += 1;
+    return Promise.resolve({ status: "acquired" });
+  }
+
+  submitReview(dlcId: string, rating: number, text?: string): Promise<ReviewOutcome> {
+    const listing = MARKET_STORE.listings.get(dlcId);
+    if (!listing) return Promise.resolve({ status: "not_found" });
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return Promise.resolve({ status: "invalid_rating", message: "评分必须是 1–5 的整数" });
+    }
+    const state = marketStateFor(this.#account.account_id);
+    if (!state.owned.has(dlcId)) {
+      return Promise.resolve({
+        status: "requires_entitlement",
+        message: "获取该内容后才能评价（product_spec §4.3；服务端重新授权）",
+      });
+    }
+    const trimmed = text?.trim();
+    state.reviews.set(dlcId, { rating, text: trimmed ? trimmed : undefined });
+    return Promise.resolve({ status: "submitted", rating });
   }
 
   // -------------------------------------------------------------------------
@@ -113,7 +342,7 @@ export class MockApiClient implements ApiClient {
   }
 
   loadWorkbench(): Promise<LoadState<WorkbenchView>> {
-    return Promise.resolve(this.#resolve("workbench", workbenchFixture(), undefined));
+    return Promise.resolve(this.#resolve("workbench", this.#workbenchView(), undefined));
   }
 
   /**
@@ -151,6 +380,27 @@ export class MockApiClient implements ApiClient {
       default:
         return { status: "ready", data };
     }
+  }
+
+  /** 工作台授权列表 = 市场获取记录（source=free）+ 班级分配示例条目。 */
+  #workbenchView(): WorkbenchView {
+    const state = marketStateFor(this.#account.account_id);
+    const owned: EntitlementViewModel[] = [...state.owned].map((dlcId) => ({
+      dlc_id: dlcId,
+      title: MARKET_STORE.listings.get(dlcId)?.title ?? dlcId,
+      source: "free",
+      valid: true,
+    }));
+    const assigned: EntitlementViewModel[] = [{
+      dlc_id: "dlc.german-b1-grammar",
+      title: "德语 B1 语法强化",
+      source: "class_assignment",
+      valid: true,
+    }];
+    return {
+      sections: WORKBENCH_SECTIONS,
+      entitlements: Object.freeze([...owned, ...assigned]),
+    };
   }
 }
 
@@ -255,13 +505,3 @@ const WORKBENCH_SECTIONS: readonly WorkbenchSection[] = [
   { id: "studio", title: "DLC Studio", description: "DLC 创建、编辑、测试与发布；BYOK", required_capability: "publish_dlc" },
   { id: "review", title: "审核与用户", description: "内容下架、用户管理、系统配置", required_capability: "manage_users" },
 ];
-
-function workbenchFixture(): WorkbenchView {
-  return {
-    sections: WORKBENCH_SECTIONS,
-    entitlements: Object.freeze([
-      { dlc_id: "dlc.fsi-german-a1", title: "FSI 德语发音基础", source: "free", valid: true },
-      { dlc_id: "dlc.german-b1-grammar", title: "德语 B1 语法强化", source: "class_assignment", valid: true },
-    ]),
-  };
-}

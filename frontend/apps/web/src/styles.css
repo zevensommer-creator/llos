@@ -365,3 +365,215 @@ body {
   color: var(--llos-color-ink-disabled);
   font-size: var(--llos-font-size-sm);
 }
+
+/* ===== T-026：市场 ===== */
+.market-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--llos-space-md);
+  margin-bottom: var(--llos-space-lg);
+}
+
+.market-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.market-search input {
+  font: inherit;
+  color: var(--llos-color-ink);
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+  width: 100%;
+}
+
+.market-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--llos-space-lg);
+}
+
+.market-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--llos-space-xs);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-lg);
+  cursor: pointer;
+}
+
+.market-card:hover,
+.market-card:focus-visible {
+  border-color: var(--llos-color-accent);
+}
+
+.market-card-title {
+  font-size: var(--llos-font-size-lg);
+  font-weight: 600;
+}
+
+.market-card-meta {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+}
+
+.market-owned-badge {
+  position: absolute;
+  top: var(--llos-space-md);
+  right: var(--llos-space-md);
+  font-size: var(--llos-font-size-sm);
+  font-weight: 600;
+  color: var(--llos-color-success);
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-success);
+  border-radius: var(--llos-radius-pill);
+  padding: 0 var(--llos-space-sm);
+}
+
+.market-back {
+  margin-bottom: var(--llos-space-lg);
+}
+
+.btn-secondary {
+  font: inherit;
+  background: var(--llos-color-surface);
+  color: var(--llos-color-ink);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-sm) var(--llos-space-lg);
+  cursor: pointer;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+  border-color: var(--llos-color-accent);
+  color: var(--llos-color-accent);
+}
+
+.section-action {
+  margin-top: var(--llos-space-md);
+}
+
+.market-detail {
+  max-width: 720px;
+  background: var(--llos-color-surface);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  padding: var(--llos-space-xl);
+}
+
+.market-summary {
+  color: var(--llos-color-ink-secondary);
+  margin: 0 0 var(--llos-space-lg);
+}
+
+.market-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--llos-space-md);
+  margin: 0 0 var(--llos-space-lg);
+}
+
+.market-facts dt {
+  font-size: var(--llos-font-size-sm);
+  color: var(--llos-color-ink-disabled);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.market-facts dd {
+  margin: var(--llos-space-xs) 0 0;
+}
+
+.market-tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--llos-space-xs);
+  margin: 0 0 var(--llos-space-lg);
+  padding: 0;
+}
+
+.tag-chip {
+  font-size: var(--llos-font-size-sm);
+  background: var(--llos-color-accent-soft);
+  color: var(--llos-color-accent);
+  border-radius: var(--llos-radius-pill);
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+}
+
+.market-actions {
+  display: flex;
+  gap: var(--llos-space-md);
+  margin-bottom: var(--llos-space-md);
+}
+
+.notice {
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-sm) var(--llos-space-md);
+  font-size: var(--llos-font-size-sm);
+  margin: 0 0 var(--llos-space-md);
+}
+
+.notice--ok {
+  border: 1px solid var(--llos-color-success);
+  color: var(--llos-color-success);
+}
+
+.notice--warn {
+  border: 1px solid var(--llos-color-warning);
+  color: var(--llos-color-warning);
+  background: var(--llos-color-accent-soft);
+}
+
+.notice--danger {
+  border: 1px solid var(--llos-color-danger);
+  color: var(--llos-color-danger);
+}
+
+.review-block {
+  border-top: 1px solid var(--llos-color-border);
+  padding-top: var(--llos-space-lg);
+}
+
+.review-title {
+  margin: 0 0 var(--llos-space-md);
+  font-size: var(--llos-font-size-lg);
+}
+
+.review-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--llos-space-md);
+}
+
+.review-text {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.review-text textarea {
+  font: inherit;
+  color: var(--llos-color-ink);
+  background: var(--llos-color-bg);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-sm);
+  padding: var(--llos-space-sm);
+  resize: vertical;
+}

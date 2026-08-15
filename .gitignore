@@ -16,6 +16,7 @@ Desktop.ini
 
 # Agent 内部状态（不进版本库）
 .workbuddy/
+.trae-receipts.log
 
 # 导入暂存区（正本已归档到 docs/）
 导入/

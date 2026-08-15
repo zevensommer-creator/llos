@@ -1,21 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MockApiClient,
   type Account,
-  type JourneyId,
   type LoadScenario,
 } from "@llos/api-client";
 import { JourneyHost } from "./components/JourneyHost";
 import { ChatJourney } from "./journeys/ChatJourney";
 import { LearningJourney } from "./journeys/LearningJourney";
 import { WorkbenchJourney } from "./journeys/WorkbenchJourney";
+import { MarketJourney } from "./market/MarketJourney";
 import type { AccountKind } from "./hooks/useJourneyState";
 
-// Web（desktop_web）呈现三条旅程：聊天 / 学习 / 电脑工作台。
+// Web（desktop_web）呈现四个视图：聊天 / 学习 / 市场 / 电脑工作台。
 // 教师助手为移动端旅程（CLIENT_SURFACE_SPEC §4），在 mobile app 呈现。
-const WEB_JOURNEYS: readonly { id: JourneyId; label: string }[] = [
+// 市场不是七态旅程（T-026）：它是带筛选/获取/评价的交互流程，独立渲染。
+type WebView = "chat" | "learning" | "market" | "workbench";
+
+const WEB_TABS: readonly { id: WebView; label: string }[] = [
   { id: "chat", label: "聊天" },
   { id: "learning", label: "学习" },
+  { id: "market", label: "市场" },
   { id: "workbench", label: "电脑工作台" },
 ];
 
@@ -30,15 +34,19 @@ const SCENARIOS: readonly { id: LoadScenario; label: string }[] = [
 ];
 
 function App() {
-  const [journey, setJourney] = useState<JourneyId>("chat");
+  const [view, setView] = useState<WebView>("chat");
   const [scenario, setScenario] = useState<LoadScenario>("normal");
   const [accountKind, setAccountKind] = useState<AccountKind>("learner");
   const [reloadKey, setReloadKey] = useState(0);
   const [account, setAccount] = useState<Account | null>(null);
 
+  // 市场流程需要跨视图共享状态（获取/评价），复用同一 client 实例；
+  // 模块级市场状态保证即使新建实例也能看到服务端语义的结果。
+  const client = useMemo(() => new MockApiClient({ account: accountKind }), [accountKind]);
+
   useEffect(() => {
-    void new MockApiClient({ account: accountKind }).getAccount().then(setAccount);
-  }, [accountKind]);
+    void client.getAccount().then(setAccount);
+  }, [client]);
 
   const retry = () => setReloadKey((k) => k + 1);
 
@@ -69,32 +77,35 @@ function App() {
       </header>
 
       <nav className="journey-nav">
-        {WEB_JOURNEYS.map((j) => (
+        {WEB_TABS.map((tab) => (
           <button
-            key={j.id}
+            key={tab.id}
             type="button"
-            className={`nav-tab ${journey === j.id ? "nav-tab--active" : ""}`}
-            onClick={() => setJourney(j.id)}
+            className={`nav-tab ${view === tab.id ? "nav-tab--active" : ""}`}
+            onClick={() => setView(tab.id)}
           >
-            {j.label}
+            {tab.label}
           </button>
         ))}
       </nav>
 
       <main className="workbench">
-        {journey === "chat" ? (
+        {view === "chat" ? (
           <JourneyHost journey="chat" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
             {(data) => <ChatJourney data={data} />}
           </JourneyHost>
         ) : null}
-        {journey === "learning" ? (
+        {view === "learning" ? (
           <JourneyHost journey="learning" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
             {(data) => <LearningJourney data={data} />}
           </JourneyHost>
         ) : null}
-        {journey === "workbench" ? (
+        {view === "market" ? (
+          <MarketJourney client={client} onStartTraining={() => setView("learning")} />
+        ) : null}
+        {view === "workbench" ? (
           <JourneyHost journey="workbench" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
-            {(data, acc) => <WorkbenchJourney data={data} account={acc} />}
+            {(data, acc) => <WorkbenchJourney data={data} account={acc} onOpenMarket={() => setView("market")} />}
           </JourneyHost>
         ) : null}
       </main>
