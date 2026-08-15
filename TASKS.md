@@ -38,6 +38,7 @@
 | T-014 | P1：契约代码化管线 + Core/Gateway 骨架 | done | trae | 高 | T-016 | pnpm monorepo；@llos/contracts（15 schema 代码生成 + ajv 校验器 + 53 测试）；@llos/core（追加式事件存储/确定性 reducer/投影/identity/entitlements，18 测试）；@llos/gateway（descriptor 注册表/capability 解析/Fake Provider/fallback，9 测试）；后端栈 TS 全栈（ADR-BACKEND-STACK） |
 | T-015 | UI-1：前端工程骨架 | done | trae | 高 | T-013 | frontend/apps（Expo 57 移动 App Shell + Vite/React Web 工作台）+ frontend/packages（design-tokens 生成 RN/CSS + api-client Mock adapter）；班级入口按 create_class 显隐；CI（build/test/typecheck）；版本锁定见 TECH_STACK v0.2 |
 | T-016 | P0.5.1 契约一致性 hotfix（ADR-013） | done | trae | 高 | T-013 | Human 复审三严重问题修复：material-pack/session-composition/material-snapshot 升 0.2.1；状态词汇两层统一；T-003 过期锁删除；18 例 fixtures 全通过 |
+| T-017 | UI-2：Mock 四旅程 | todo | kimi | 高 | T-015 | Human 指派前端线移交 kimi（Kimi K3）；聊天/学习/教师助手/电脑工作台 × 正常/空白/加载/权限不足/离线/可恢复/不可恢复；交接包见 frontend/docs/HANDOFF.md（验收门 G1-G4） |
 
 ---
 
@@ -84,6 +85,7 @@
 | 2026-08-15 | TRAE | Human 复审 hotfix（ADR-013）：T-016 登记并完成——三份契约升 0.2.1、状态词汇统一、待决表更新、T-003 过期锁删除；T-014/T-015 解除阻塞 |
 | 2026-08-16 | TRAE | T-014 完成：pnpm monorepo + @llos/contracts（代码生成/校验器/53 测试）+ @llos/core（events/identity/entitlements，18 测试）+ @llos/gateway（注册表/Fake Provider/fallback，9 测试）；.gitignore 增加 dist/；锁文件已释放 |
 | 2026-08-16 | TRAE | T-014 推送并合并 main（6e5ff6c + f23899b）；T-015 认领并完成：UI-1 前端骨架（apps/mobile Expo 57 + apps/web Vite + design-tokens + api-client Mock + CI），86 测试全通过；TECH_STACK v0.2 版本锁定；锁文件已释放 |
+| 2026-08-16 | Human | 前端/UI 工作线移交新 Agent kimi（Kimi K3）：UI-2 起由 kimi 认领；交接包 frontend/docs/HANDOFF.md（含验收门 G1-G4 与阻塞项登记）；T-017 登记 |
 
 ---
 
