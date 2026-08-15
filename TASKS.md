@@ -23,7 +23,7 @@
 |----|------|------|--------|--------|------|------|
 | T-001 | 搭建协作基础设施（AGENTS/CONVENTIONS/TASKS/README） | done | TRAE | 高 | — | 已完成 |
 | T-002 | 初始化 Git 仓库并提交初始文件 | done | TRAE | 高 | T-001 | 已完成；Git 路径 `E:\Git\bin\git.exe` |
-| T-003 | 制定 LLOS 完整第一代产品工程书 | doing | TRAE | 高 | — | 产品方案细化中，与技术方案并行 |
+| T-003 | 制定 LLOS 完整第一代产品工程书 | review | TRAE | 高 | — | 设计定案：基线 v0.1.2 + 产品规格 v0.5 + BUILD_PLAN v1.0，待 Human 审核并推送 GitHub 留档后开始编码 |
 | T-004 | 定义 DLC 市场分类与发现机制 | todo | WorkBuddy | 中 | T-003 | 借鉴 Steam Workshop |
 | T-005 | 设计账户体系（多用户类型：教师/学生/自由学习者） | todo | TRAE | 中 | T-003 | 借鉴 Steam 账户 |
 | T-006 | 补齐协作环境（目录结构/.gitignore/docs 归档/远程备份） | done | WorkBuddy | 高 | T-002 | 经 Human 批准执行 |
@@ -54,7 +54,8 @@
 |------|--------|---------|
 | 2026-08-09 | TRAE | 初始化任务看板 |
 | 2026-08-09 | WorkBuddy | 登记并完成 T-006（环境补齐，经 Human 批准）；提示 T-003 状态待 Human 确认（工程书 Word 版已存在于 docs/） |
+| 2026-08-15 | TRAE | T-003 转 review：设计阶段完成（架构基线 v0.1.2 含 ADR-009 版权责任制；产品规格 v0.5 含班级/Studio/生命周期/版权；BUILD_PLAN v1.0 分步 P0-P9；AGENTS.md v2.1；README 更新）。待 Human 全套审核后推送 GitHub |
 
 ---
 
-*任务看板 · 最后更新：2026-08-09 · 维护者：所有 Agent + Human*
+*任务看板 · 最后更新：2026-08-15 · 维护者：所有 Agent + Human*
