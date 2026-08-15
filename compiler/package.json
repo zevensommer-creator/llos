@@ -1,0 +1,20 @@
+{
+  "name": "@llos/compiler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLOS DLC compiler runtime: material.validate -> pedagogical.plan -> executable.lower",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.js\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@llos/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

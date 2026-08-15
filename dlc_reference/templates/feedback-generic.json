@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.1.0",
+  "template_id": "feedback.generic",
+  "on_correct": {
+    "message": "Richtig. Bleiben Sie bei dem Muster und wiederholen Sie es laut."
+  },
+  "on_retry": {
+    "message": "Noch einmal. Achten Sie auf Wortstellung und Valenz."
+  }
+}

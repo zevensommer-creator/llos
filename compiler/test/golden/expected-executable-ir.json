@@ -1,0 +1,308 @@
+{
+  "schema_version": "0.2.0",
+  "ir_id": "ir.executable.044c83bc5f3e1a0d",
+  "ir_version": "0.2.0",
+  "ir_kind": "executable_session",
+  "language": "de-DE",
+  "created_at": "2026-08-16T00:00:00Z",
+  "compiler": {
+    "dlc_id": "dlc.de.fsi-construction",
+    "dlc_version": "0.1.0",
+    "runtime_version": "0.1.0"
+  },
+  "source_refs": [
+    {
+      "uri": "artifact://materials/material.de.hotel-checkin/0.1.0",
+      "sha256": "2d02e37b009401882ee72a86c7a6f8a347f9e280d967e12c12b1f594d0446db0",
+      "media_type": "application/json",
+      "schema_id": "material-pack",
+      "schema_version": "0.2.1"
+    }
+  ],
+  "random_seed": 0,
+  "claims": [
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/checkin_dialogue",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Check-in Dialog führen"
+      }
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/verb_valence_dative",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Dativvalenz anbieten beherrschen"
+      }
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/polite_request_construction",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Höfliche-Bitte-Konstruktion verwenden"
+      }
+    }
+  ],
+  "program": {
+    "session_policy": {
+      "max_duration_ms": 180000,
+      "max_provider_cost_usd": 0,
+      "max_iterations": 16,
+      "on_provider_failure": "fallback",
+      "offline_allowed": true
+    },
+    "entry_step_id": "scenario.checkin.present",
+    "steps": [
+      {
+        "step_id": "scenario.checkin.present",
+        "primitive": "present",
+        "display_mode_ref": "mode.substitution_drill",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "present": {
+          "prompt": "Übung: Im Hotel einchecken"
+        },
+        "next": "scenario.checkin.capture"
+      },
+      {
+        "step_id": "scenario.checkin.capture",
+        "primitive": "capture_text",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "capture": {
+          "timeout_ms": 30000,
+          "max_length": 500
+        },
+        "next": "scenario.checkin.evaluate"
+      },
+      {
+        "step_id": "scenario.checkin.evaluate",
+        "primitive": "evaluate",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "evaluate": {
+          "evaluator": {
+            "id": "eval.typed_answer",
+            "version": "0.1.0",
+            "kind": "rule"
+          },
+          "metric_ref": "dlc.de.fsi-construction:metric/typed_answer_accuracy",
+          "minimum_measurement_confidence": 0.8
+        },
+        "next": "scenario.checkin.feedback"
+      },
+      {
+        "step_id": "scenario.checkin.feedback",
+        "primitive": "feedback",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "feedback": {
+          "template_ref": {
+            "uri": "artifact://dlc/dlc.de.fsi-construction/templates/feedback-generic",
+            "sha256": "c28c6285c15ddeb6e0937376b94adbe31c160fd01f716cdb1f2537fbb17b9ae2",
+            "media_type": "application/json"
+          }
+        },
+        "next": "scenario.checkin.schedule"
+      },
+      {
+        "step_id": "scenario.checkin.schedule",
+        "primitive": "schedule",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "schedule": {
+          "scheduler": "rule_based",
+          "interval": "PT24H"
+        },
+        "next": "valence.anbieten.present"
+      },
+      {
+        "step_id": "valence.anbieten.present",
+        "primitive": "present",
+        "display_mode_ref": "mode.valence_cloze",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "present": {
+          "prompt": "Übung: anbieten: jemandem etwas anbieten",
+          "reference_text": "Wir bieten Ihnen diesen Termin an."
+        },
+        "next": "valence.anbieten.capture"
+      },
+      {
+        "step_id": "valence.anbieten.capture",
+        "primitive": "capture_text",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "capture": {
+          "timeout_ms": 30000,
+          "max_length": 500
+        },
+        "next": "valence.anbieten.evaluate"
+      },
+      {
+        "step_id": "valence.anbieten.evaluate",
+        "primitive": "evaluate",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "evaluate": {
+          "evaluator": {
+            "id": "eval.typed_answer",
+            "version": "0.1.0",
+            "kind": "rule"
+          },
+          "metric_ref": "dlc.de.fsi-construction:metric/typed_answer_accuracy",
+          "minimum_measurement_confidence": 0.8
+        },
+        "next": "valence.anbieten.feedback"
+      },
+      {
+        "step_id": "valence.anbieten.feedback",
+        "primitive": "feedback",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "feedback": {
+          "template_ref": {
+            "uri": "artifact://dlc/dlc.de.fsi-construction/templates/feedback-generic",
+            "sha256": "c28c6285c15ddeb6e0937376b94adbe31c160fd01f716cdb1f2537fbb17b9ae2",
+            "media_type": "application/json"
+          }
+        },
+        "next": "valence.anbieten.schedule"
+      },
+      {
+        "step_id": "valence.anbieten.schedule",
+        "primitive": "schedule",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "schedule": {
+          "scheduler": "rule_based",
+          "interval": "PT24H"
+        },
+        "next": "concept.polite-request.present"
+      },
+      {
+        "step_id": "concept.polite-request.present",
+        "primitive": "present",
+        "display_mode_ref": "mode.construction_drill",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "present": {
+          "prompt": "Übung: Höfliche Bitte",
+          "reference_text": "Könnten Sie bitte … ?"
+        },
+        "next": "concept.polite-request.capture"
+      },
+      {
+        "step_id": "concept.polite-request.capture",
+        "primitive": "capture_text",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "capture": {
+          "timeout_ms": 30000,
+          "max_length": 500
+        },
+        "next": "concept.polite-request.evaluate"
+      },
+      {
+        "step_id": "concept.polite-request.evaluate",
+        "primitive": "evaluate",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "evaluate": {
+          "evaluator": {
+            "id": "eval.typed_answer",
+            "version": "0.1.0",
+            "kind": "rule"
+          },
+          "metric_ref": "dlc.de.fsi-construction:metric/typed_answer_accuracy",
+          "minimum_measurement_confidence": 0.8
+        },
+        "next": "concept.polite-request.feedback"
+      },
+      {
+        "step_id": "concept.polite-request.feedback",
+        "primitive": "feedback",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "feedback": {
+          "template_ref": {
+            "uri": "artifact://dlc/dlc.de.fsi-construction/templates/feedback-generic",
+            "sha256": "c28c6285c15ddeb6e0937376b94adbe31c160fd01f716cdb1f2537fbb17b9ae2",
+            "media_type": "application/json"
+          }
+        },
+        "next": "concept.polite-request.schedule"
+      },
+      {
+        "step_id": "concept.polite-request.schedule",
+        "primitive": "schedule",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "schedule": {
+          "scheduler": "rule_based",
+          "interval": "PT24H"
+        },
+        "next": "session.stop"
+      },
+      {
+        "step_id": "session.stop",
+        "primitive": "stop",
+        "stop": {
+          "outcome": "success"
+        }
+      }
+    ],
+    "stop_conditions": [
+      {
+        "fact": "session.elapsed_ms",
+        "operator": "gte",
+        "value": {
+          "kind": "int",
+          "int": 180000
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "input_hashes": [
+      "2d02e37b009401882ee72a86c7a6f8a347f9e280d967e12c12b1f594d0446db0",
+      "cac3c3ac7cadcd534001eaea732a58aef2b387722afa7f248829b86ccffd3bf1"
+    ],
+    "passes": [
+      {
+        "id": "material.parse",
+        "version": "0.1.0",
+        "status": "completed"
+      },
+      {
+        "id": "pedagogical.plan",
+        "version": "0.1.0",
+        "status": "completed"
+      },
+      {
+        "id": "executable.lower",
+        "version": "0.1.0",
+        "status": "completed"
+      }
+    ],
+    "compiled_at": "2026-08-16T00:00:00Z"
+  }
+}

@@ -1,6 +1,7 @@
 packages:
   - contracts
   - core
+  - compiler
   - gateway
   - market
   - frontend/apps/*

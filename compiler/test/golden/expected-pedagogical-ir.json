@@ -1,0 +1,151 @@
+{
+  "schema_version": "0.2.0",
+  "ir_id": "ir.pedagogical.0e4b4c876cda92a3",
+  "ir_version": "0.2.0",
+  "ir_kind": "pedagogical",
+  "language": "de-DE",
+  "created_at": "2026-08-16T00:00:00Z",
+  "compiler": {
+    "dlc_id": "dlc.de.fsi-construction",
+    "dlc_version": "0.1.0",
+    "runtime_version": "0.1.0"
+  },
+  "source_refs": [
+    {
+      "uri": "artifact://materials/material.de.hotel-checkin/0.1.0",
+      "sha256": "2d02e37b009401882ee72a86c7a6f8a347f9e280d967e12c12b1f594d0446db0",
+      "media_type": "application/json",
+      "schema_id": "material-pack",
+      "schema_version": "0.2.1"
+    }
+  ],
+  "random_seed": 0,
+  "claims": [
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/checkin_dialogue",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Check-in Dialog führen"
+      }
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/verb_valence_dative",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Dativvalenz anbieten beherrschen"
+      }
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/polite_request_construction",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "descriptor": {
+        "display_name": "Höfliche-Bitte-Konstruktion verwenden"
+      }
+    }
+  ],
+  "program": {
+    "theory_profile": [
+      {
+        "id": "construction-grammar",
+        "role": "primary"
+      },
+      {
+        "id": "fsi-substitution",
+        "role": "supporting"
+      }
+    ],
+    "claim_refs": [
+      "dlc.de.fsi-construction:claim/checkin_dialogue",
+      "dlc.de.fsi-construction:claim/verb_valence_dative",
+      "dlc.de.fsi-construction:claim/polite_request_construction"
+    ],
+    "prerequisites": [],
+    "activity_plan": [
+      {
+        "stage_id": "scenario.checkin",
+        "mode_ref": "mode.substitution_drill",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/checkin_dialogue"
+        ],
+        "repeat": 3,
+        "time_budget_ms": 60000
+      },
+      {
+        "stage_id": "valence.anbieten",
+        "mode_ref": "mode.valence_cloze",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/verb_valence_dative"
+        ],
+        "repeat": 3,
+        "time_budget_ms": 60000
+      },
+      {
+        "stage_id": "concept.polite-request",
+        "mode_ref": "mode.construction_drill",
+        "claim_refs": [
+          "dlc.de.fsi-construction:claim/polite_request_construction"
+        ],
+        "repeat": 3,
+        "time_budget_ms": 60000
+      }
+    ],
+    "assessment_plan": {
+      "dimensions": [
+        {
+          "id": "dim.checkin_dialogue",
+          "weight": 0.4,
+          "evidence_required": true,
+          "minimum_measurement_confidence": 0.8
+        },
+        {
+          "id": "dim.verb_valence_dative",
+          "weight": 0.3,
+          "evidence_required": true,
+          "minimum_measurement_confidence": 0.8
+        },
+        {
+          "id": "dim.polite_request_construction",
+          "weight": 0.3,
+          "evidence_required": true,
+          "minimum_measurement_confidence": 0.8
+        }
+      ],
+      "abstention_allowed": true
+    },
+    "remediation": [
+      {
+        "trigger": {
+          "fact": "observation.measurement_confidence",
+          "operator": "lt",
+          "value": {
+            "kind": "float",
+            "float": 0.8
+          }
+        },
+        "action": "repeat"
+      }
+    ]
+  },
+  "provenance": {
+    "input_hashes": [
+      "2d02e37b009401882ee72a86c7a6f8a347f9e280d967e12c12b1f594d0446db0",
+      "cac3c3ac7cadcd534001eaea732a58aef2b387722afa7f248829b86ccffd3bf1"
+    ],
+    "passes": [
+      {
+        "id": "material.parse",
+        "version": "0.1.0",
+        "status": "completed"
+      },
+      {
+        "id": "pedagogical.plan",
+        "version": "0.1.0",
+        "status": "completed"
+      }
+    ],
+    "compiled_at": "2026-08-16T00:00:00Z"
+  }
+}
