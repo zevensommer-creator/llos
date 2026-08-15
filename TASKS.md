@@ -42,7 +42,7 @@
 | T-018 | P2a：编译器管线 + golden test | done | trae | 高 | T-014 | 已合并 main（cb1b6f6 + 47e159c）；@llos/compiler 三段管线（material.validate → pedagogical.plan → executable.lower，12 类型化错误码）；参考素材 de-hotel-checkin + 参考 DLC de.fsi-construction；30 测试（golden ×2/确定性/素材门 ×7/manifest 反例 ×7）；全 workspace 116 测试 + typecheck 绿；锁已释放。遗留 follow-up：claim 权重归一化、零框架包边界 |
 | T-019 | P2b：训练执行引擎 + FSRS 调度器 | done | trae | 高 | T-018 | 已合并 main（82e3c35 + b7d03b0）；core/src/runtime SessionExecutor（12 原语闭集、注册表事件产出、branch 条件路由、迭代/时长硬上限→typed abort、能力失败降级、$complete/$stop 终止符）+ core/src/scheduler FSRS（ts-fsrs 5.4，事件流重放重建 Card，低置信观察过滤）；25 新测试；.gitattributes 强制 LF（修复 T-018 golden 跨平台行尾缺陷）；全 workspace 141 测试绿；锁已释放。follow-up：SM-2 冷启动回退、branch 事实集扩展 |
 | T-020 | P2c：掌握判定引擎 + 学习曲线/薄弱点/难度投影 + CLI 完整循环 | done | trae | 高 | T-019 | 已合并 main（8d9cd51 + 6d3db5f）；core/src/policy/mastery（Evidence Policy 确定性解释器，五态判定 not_yet/provisional/learned/uncertain/lapsed + reason codes + supersedes 链 + 保留期延迟成功检测）+ 三投影（curve 按天分桶/weak-spots 可解释排序含逾期复习/difficulty tier）+ scripts/demo-loop.mjs（`pnpm demo:loop`：编译→两轮执行→判定→投影→FSRS，37 事件闭环）；24 新测试（mastery 12 + projections 12）；全 workspace 161 测试 + typecheck 绿；锁已释放 |
-| T-021 | P3a：发音证据管线骨架 + 质量门/弃权协议 | review | trae | 高 | T-020 | 提交 93ac11e（分支 feature/trae-speech-pipeline）：@llos/speech 端口化管线（AudioAnalyzer/VAD/ASR/G2P/Aligner + Fake 引擎零推理成本）；德语画像 de-DE 0.1.0（Stage 0 保守阈值：SNR≥15/完整性≥0.8/对齐覆盖≥0.9）+ G2P 词典 25 词 + 规则回退（ich/ach 分辨、词尾清化、长短元音启发，全部标 uncertain）；PronunciationAssessment 全路径契约组装（45 测试：弃权矩阵 §8.3 ×9 + 质量门 ×10 + G2P ×10 + 匹配 ×7 + 编排确定性/不误拒 ×9）；后端 5 包 200 测试 + typecheck 绿；声学重引擎适配器留后续 |
+| T-021 | P3a：发音证据管线骨架 + 质量门/弃权协议 | done | trae | 高 | T-020 | 已合并 main（93ac11e + 7fbde44）；@llos/speech 端口化管线（AudioAnalyzer/VAD/ASR/G2P/Aligner + Fake 引擎零推理成本）；德语画像 de-DE 0.1.0（Stage 0 保守阈值：SNR≥15/完整性≥0.8/对齐覆盖≥0.9）+ G2P 词典 25 词 + 规则回退（ich/ach 分辨、词尾清化、长短元音启发，全部标 uncertain）；PronunciationAssessment 全路径契约组装（45 测试：弃权矩阵 §8.3 ×9 + 质量门 ×10 + G2P ×10 + 匹配 ×7 + 编排确定性/不误拒 ×9）；后端 5 包 200 测试 + typecheck 绿；锁已释放。声学重引擎适配器留后续 |
 | T-022 | P3b：GOP/韵律证据 + 德语校准器 + 四专项诊断 | todo | — | 高 | T-021 | GOP/CTC + Praat 韵律特征端口；德语校准器（保守阈值，误纠正率 ≤5% 测试）；四专项（长短元音/前圆唇元音/ich-ach-Laut/词尾清化）诊断 + 可接受变体层 + feedback_key |
 | T-023 | P3c：发音证据入 Core 闭环 + Piper TTS Provider | todo | — | 高 | T-022 | PronunciationAssessment → LearningObservation → 学习事件桥接；gateway 注册 Piper TTS Provider（仅示范朗读）；指标 harness（对齐成功率/弃权率/误纠正率 vs 基线 §13.2 门槛） |
 
@@ -103,6 +103,7 @@
 | 2026-08-16 | Human | 确认 T-020 合并：feature/trae-mastery-projections → main（8d9cd51 + merge 6d3db5f）；T-020 置 done，锁已释放；**P2 阶段（T-018/019/020）全部完成**，下一步 P3 发音证据管线待登记 |
 | 2026-08-16 | TRAE | P3 拆三步登记：T-021（管线骨架+质量门/弃权）/ T-022（GOP+诊断）/ T-023（入 Core 闭环+TTS）；T-021 认领 → doing，分支 feature/trae-speech-pipeline，范围 speech/ + pnpm-workspace.yaml；Silero/faster-whisper/MFA/Praat 等 Python 重引擎以类型化端口 + Fake 锁协议，真实适配器后续任务 |
 | 2026-08-16 | TRAE | T-021 完成 → review（93ac11e，21 文件 +1902 行）：speech 包 45 新测试全绿（弃权矩阵含 insufficient_speech/asr_disagreement/alignment 双态/provider_failure/语言与模式不支持/降级不弃权）；后端 5 包 200 测试 + typecheck 绿；待 Human 确认合并 |
+| 2026-08-16 | Human | 确认 T-021 合并：feature/trae-speech-pipeline → main（93ac11e + 7fbde44，fast-forward）；T-021 置 done，锁已释放；T-022 开工 |
 
 ---
 
