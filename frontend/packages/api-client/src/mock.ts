@@ -5,9 +5,18 @@ import type {
   ApiError,
   CapabilityId,
   ChatSessionView,
+  ClassAssignmentView,
+  ClassDetailView,
+  ClassInvitationView,
+  ClassStatsView,
+  ClassSummary,
+  ClassUnlockItem,
+  CreateClassOutcome,
+  AssignOutcome,
   EntitlementViewModel,
   HomeCard,
   HomeOverview,
+  JoinClassOutcome,
   JourneyId,
   LearningSessionView,
   LoadScenario,
@@ -15,6 +24,7 @@ import type {
   MarketEntry,
   MarketListingDetail,
   MarketQuery,
+  PostNoticeOutcome,
   ReviewOutcome,
   TeacherMobileDashboardViewModel,
   WorkbenchSection,
@@ -111,7 +121,7 @@ function seedListings(): MarketListingRecord[] {
       difficulty: "B1",
       tags: ["语法", "强化"],
       price_model: "subscription",
-      publisher_name: "王老师（已认证）",
+      publisher_name: "王老师（Mock）",
       published_at: "2026-08-05T08:00:00Z",
       downloads: 61,
     },
@@ -145,6 +155,127 @@ let MARKET_STORE: MarketStore = seedStore();
 /** 恢复市场种子数据（测试隔离用）。 */
 export function resetMockMarket(): void {
   MARKET_STORE = seedStore();
+}
+
+// ---------------------------------------------------------------------------
+// T-029: 模块级班级状态（与 MARKET_STORE 同模式）。Mock 层模拟服务端语义，
+// 与 core ClassService/ClassAssignmentService/projectClassStats 行为对齐：
+// 门禁（create_class/join_class/creator）、后加入补发由 join 即时模拟、
+// 先修顺序是纯呈现门、统计从完成标记聚合（真实投影在 Core，e2e-p5 已验证）。
+// ---------------------------------------------------------------------------
+
+const LEARNER_ID = "account.mock.learner";
+const TEACHER_ID = "account.mock.teacher";
+
+interface MockClassAssignment {
+  assignment_id: string;
+  dlc_id: string;
+  title: string;
+  sequence: number;
+  due_at?: string;
+  mode: "auto_free" | "teacher_purchase" | "recommend_self_purchase";
+  entitlements_granted: boolean;
+}
+
+interface MockClassInvitation {
+  code: string;
+  class_id: string;
+  max_uses: number;
+  uses: number;
+  revoked: boolean;
+}
+
+interface MockClassRecord {
+  class_id: string;
+  name: string;
+  description?: string;
+  creator_id: string;
+  created_at: string;
+  archived: boolean;
+  /** account_id → joined_at；display_name 经 knownNames 解析。 */
+  members: Map<string, string>;
+  assignments: MockClassAssignment[];
+  invitations: Map<string, MockClassInvitation>;
+  notices: { notice_id: string; author_id: string; text: string; created_at: string }[];
+}
+
+interface MockClassStore {
+  classes: Map<string, MockClassRecord>;
+  /** `${class_id}::${account_id}` → 完成的 dlc 集合。 */
+  completed: Map<string, Set<string>>;
+  /** `${class_id}::${account_id}` → 累计训练分钟。 */
+  trainingMinutes: Map<string, number>;
+  nextId: { class: number; assignment: number; invitation: number; notice: number };
+}
+
+function knownName(accountId: string): string {
+  if (accountId === TEACHER_ID) return "王老师（Mock）";
+  if (accountId === LEARNER_ID) return "小夏（Mock）";
+  if (accountId === "account.mock.student-a") return "学生 A（Mock）";
+  return accountId;
+}
+
+function seedClassStore(): MockClassStore {
+  const store: MockClassStore = {
+    classes: new Map(),
+    completed: new Map(),
+    trainingMinutes: new Map(),
+    nextId: { class: 2, assignment: 3, invitation: 1, notice: 2 },
+  };
+  const klass: MockClassRecord = {
+    class_id: "class.mock.a1",
+    name: "德语 A1 班（Mock 种子）",
+    description: "长短元音与酒店场景跟读训练。",
+    creator_id: TEACHER_ID,
+    created_at: "2026-08-10T09:00:00Z",
+    archived: false,
+    members: new Map([
+      [TEACHER_ID, "2026-08-10T09:00:00Z"],
+      [LEARNER_ID, "2026-08-11T10:00:00Z"],
+      ["account.mock.student-a", "2026-08-11T10:05:00Z"],
+    ]),
+    assignments: [
+      {
+        assignment_id: "assign.mock.1",
+        dlc_id: "dlc.fsi-german-a1",
+        title: "FSI 德语发音基础",
+        sequence: 1,
+        due_at: "2026-08-20T00:00:00Z",
+        mode: "auto_free",
+        entitlements_granted: true,
+      },
+      {
+        assignment_id: "assign.mock.2",
+        dlc_id: "dlc.de-hotel-survival",
+        title: "酒店德语速成",
+        sequence: 2,
+        mode: "auto_free",
+        entitlements_granted: true,
+      },
+    ],
+    invitations: new Map(),
+    notices: [
+      {
+        notice_id: "notice.mock.1",
+        author_id: TEACHER_ID,
+        text: "本周日前完成第 1 项发音训练。",
+        created_at: "2026-08-12T08:00:00Z",
+      },
+    ],
+  };
+  store.classes.set(klass.class_id, klass);
+  store.completed.set(`${klass.class_id}::${LEARNER_ID}`, new Set(["dlc.fsi-german-a1"]));
+  store.completed.set(`${klass.class_id}::account.mock.student-a`, new Set(["dlc.fsi-german-a1"]));
+  store.trainingMinutes.set(`${klass.class_id}::${LEARNER_ID}`, 42);
+  store.trainingMinutes.set(`${klass.class_id}::account.mock.student-a`, 30);
+  return store;
+}
+
+let CLASS_STORE: MockClassStore = seedClassStore();
+
+/** 恢复班级种子数据（测试隔离用）。 */
+export function resetMockClasses(): void {
+  CLASS_STORE = seedClassStore();
 }
 
 function marketStateFor(accountId: string): MarketAccountState {
@@ -307,7 +438,7 @@ export class MockApiClient implements ApiClient {
 
   submitReview(dlcId: string, rating: number, text?: string): Promise<ReviewOutcome> {
     const listing = MARKET_STORE.listings.get(dlcId);
-    if (!listing) return Promise.resolve({ status: "not_found" });
+    if (!listing) return Promise.resolve({ status: "not_found", message: "市场不存在该 DLC" });
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return Promise.resolve({ status: "invalid_rating", message: "评分必须是 1–5 的整数" });
     }
@@ -321,6 +452,259 @@ export class MockApiClient implements ApiClient {
     const trimmed = text?.trim();
     state.reviews.set(dlcId, { rating, text: trimmed ? trimmed : undefined });
     return Promise.resolve({ status: "submitted", rating });
+  }
+
+  // -------------------------------------------------------------------------
+  // T-029 班级流程（Mock 层模拟服务端门禁，语义对齐 core）
+  // -------------------------------------------------------------------------
+
+  #myClasses(): MockClassRecord[] {
+    return [...CLASS_STORE.classes.values()].filter((klass) =>
+      klass.members.has(this.#account.account_id),
+    );
+  }
+
+  listMyClasses(): Promise<readonly ClassSummary[]> {
+    return Promise.resolve(
+      Object.freeze(
+        this.#myClasses().map((klass) => this.#summaryOf(klass)),
+      ),
+    );
+  }
+
+  createClass(name: string, description?: string): Promise<CreateClassOutcome> {
+    if (!this.#account.capabilities.includes("create_class")) {
+      return Promise.resolve({
+        status: "permission_denied",
+        required_capability: "create_class",
+        message: "建班需要 create_class 能力（服务端重新授权，product_spec §2.1）",
+      });
+    }
+    const trimmed = name.trim();
+    if (trimmed.length === 0) {
+      return Promise.resolve({ status: "invalid_name", message: "班级名称不能为空" });
+    }
+    const id = `class.mock.${CLASS_STORE.nextId.class++}`;
+    const klass: MockClassRecord = {
+      class_id: id,
+      name: trimmed,
+      description: description?.trim() || undefined,
+      creator_id: this.#account.account_id,
+      created_at: "2026-08-16T10:00:00Z",
+      archived: false,
+      members: new Map([[this.#account.account_id, "2026-08-16T10:00:00Z"]]),
+      assignments: [],
+      invitations: new Map(),
+      notices: [],
+    };
+    CLASS_STORE.classes.set(id, klass);
+    return Promise.resolve({ status: "created", class: this.#summaryOf(klass) });
+  }
+
+  joinClass(code: string): Promise<JoinClassOutcome> {
+    const invitation = [...CLASS_STORE.classes.values()]
+      .flatMap((klass) => [...klass.invitations.values()])
+      .find((inv) => inv.code === code.trim());
+    const klass = invitation
+      ? CLASS_STORE.classes.get(invitation.class_id)
+      : undefined;
+    if (!invitation || !klass || invitation.revoked || invitation.uses >= invitation.max_uses) {
+      return Promise.resolve({ status: "invalid_code", message: "邀请码无效或已用尽" });
+    }
+    if (klass.members.has(this.#account.account_id)) {
+      return Promise.resolve({ status: "already_member", class: this.#summaryOf(klass) });
+    }
+    if (klass.archived) {
+      return Promise.resolve({ status: "class_archived", message: "班级已归档，无法加入" });
+    }
+    klass.members.set(this.#account.account_id, "2026-08-16T10:30:00Z");
+    invitation.uses += 1;
+    // 后加入补发（core onMemberJoined 语义）：auto_free 分配对训练完成标记初始化。
+    const key = `${klass.class_id}::${this.#account.account_id}`;
+    if (!CLASS_STORE.completed.has(key)) CLASS_STORE.completed.set(key, new Set());
+    return Promise.resolve({ status: "joined", class: this.#summaryOf(klass) });
+  }
+
+  getClassDetail(classId: string): Promise<ClassDetailView | null> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || !klass.members.has(this.#account.account_id)) return Promise.resolve(null);
+    const members = [...klass.members.entries()]
+      .map(([accountId, joinedAt]) => ({
+        account_id: accountId,
+        display_name: knownName(accountId),
+        joined_at: joinedAt,
+        is_creator: accountId === klass.creator_id,
+      }))
+      .sort((a, b) => a.joined_at.localeCompare(b.joined_at));
+    const assignments: readonly ClassAssignmentView[] = klass.assignments
+      .map((assignment) => ({ ...assignment }));
+    const notices = [...klass.notices]
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((notice) => ({
+        notice_id: notice.notice_id,
+        text: notice.text,
+        created_at: notice.created_at,
+        author_name: knownName(notice.author_id),
+      }));
+    return Promise.resolve({
+      class_summary: this.#summaryOf(klass),
+      members: Object.freeze(members),
+      assignments: Object.freeze(assignments),
+      notices: Object.freeze(notices),
+    });
+  }
+
+  issueClassInvitation(classId: string, maxUses = 1): Promise<ClassInvitationView | null> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || klass.creator_id !== this.#account.account_id) return Promise.resolve(null);
+    const code = `llos-class-mock${CLASS_STORE.nextId.invitation++}`;
+    klass.invitations.set(code, {
+      code,
+      class_id: classId,
+      max_uses: maxUses,
+      uses: 0,
+      revoked: false,
+    });
+    return Promise.resolve({ code, max_uses: maxUses, uses: 0 });
+  }
+
+  assignDlc(
+    classId: string,
+    dlcId: string,
+    options?: { sequence?: number; dueAt?: string },
+  ): Promise<AssignOutcome> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || klass.creator_id !== this.#account.account_id) {
+      return Promise.resolve({ status: "not_creator", message: "只有班级创建者可以分配" });
+    }
+    const listing = MARKET_STORE.listings.get(dlcId);
+    if (!listing) {
+      return Promise.resolve({ status: "invalid_input", message: "市场不存在该 DLC" });
+    }
+    const existing = klass.assignments.find((a) => a.dlc_id === dlcId);
+    const assignmentId = existing?.assignment_id ?? `assign.mock.${CLASS_STORE.nextId.assignment++}`;
+    // §4.2：创建者自有内容对班级自动免费；其余付费项仅记录 C 方案（P8 前不授权）。
+    const creatorOwned = listing.publisher_name === knownName(klass.creator_id);
+    const autoFree = listing.price_model === "free" || creatorOwned;
+    const assignment: MockClassAssignment = {
+      assignment_id: assignmentId,
+      dlc_id: dlcId,
+      title: listing.title,
+      sequence: options?.sequence ?? existing?.sequence ?? klass.assignments.length + 1,
+      due_at: options?.dueAt ?? existing?.due_at,
+      mode: autoFree ? "auto_free" : "recommend_self_purchase",
+      entitlements_granted: autoFree,
+    };
+    if (existing) {
+      klass.assignments[klass.assignments.indexOf(existing)] = assignment;
+    } else {
+      klass.assignments.push(assignment);
+    }
+    return Promise.resolve({ status: "assigned", assignment: { ...assignment } });
+  }
+
+  postClassNotice(classId: string, text: string): Promise<PostNoticeOutcome> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || klass.creator_id !== this.#account.account_id) {
+      return Promise.resolve({ status: "not_creator", message: "只有班级创建者可以发通知" });
+    }
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      return Promise.resolve({ status: "invalid_text", message: "通知内容不能为空" });
+    }
+    const notice = {
+      notice_id: `notice.mock.${CLASS_STORE.nextId.notice++}`,
+      author_id: this.#account.account_id,
+      text: trimmed,
+      created_at: "2026-08-16T11:00:00Z",
+    };
+    klass.notices.push(notice);
+    return Promise.resolve({
+      status: "posted",
+      notice: {
+        notice_id: notice.notice_id,
+        text: notice.text,
+        created_at: notice.created_at,
+        author_name: knownName(notice.author_id),
+      },
+    });
+  }
+
+  loadClassUnlockState(classId: string): Promise<readonly ClassUnlockItem[] | null> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || !klass.members.has(this.#account.account_id)) return Promise.resolve(null);
+    const completed =
+      CLASS_STORE.completed.get(`${classId}::${this.#account.account_id}`) ?? new Set<string>();
+    const ordered = [...klass.assignments].sort((a, b) => a.sequence - b.sequence);
+    return Promise.resolve(
+      Object.freeze(
+        ordered.map((assignment) => {
+          const blockers = ordered
+            .filter((other) => other.sequence < assignment.sequence && !completed.has(other.dlc_id))
+            .map((other) => other.assignment_id);
+          return {
+            assignment_id: assignment.assignment_id,
+            dlc_id: assignment.dlc_id,
+            title: assignment.title,
+            sequence: assignment.sequence,
+            due_at: assignment.due_at,
+            unlocked: blockers.length === 0,
+            completed: completed.has(assignment.dlc_id),
+            blocked_by: Object.freeze(blockers),
+          };
+        }),
+      ),
+    );
+  }
+
+  loadClassStats(classId: string): Promise<ClassStatsView | null> {
+    const klass = CLASS_STORE.classes.get(classId);
+    if (!klass || klass.creator_id !== this.#account.account_id) return Promise.resolve(null);
+    const perMember = [...klass.members.keys()].map((accountId) => {
+      const completed =
+        CLASS_STORE.completed.get(`${classId}::${accountId}`) ?? new Set<string>();
+      const trainingMinutes =
+        CLASS_STORE.trainingMinutes.get(`${classId}::${accountId}`) ?? 0;
+      return {
+        account_id: accountId,
+        display_name: knownName(accountId),
+        assigned_count: klass.assignments.length,
+        completed_count: [...completed].filter((dlcId) =>
+          klass.assignments.some((a) => a.dlc_id === dlcId),
+        ).length,
+        training_minutes: trainingMinutes,
+      };
+    });
+    const completionsTotal = perMember.reduce((sum, m) => sum + m.completed_count, 0);
+    const expected = klass.members.size * klass.assignments.length;
+    const seedWeakSpot = {
+      claim_ref: "claim/pronunciation.ich_laut",
+      members_affected: 2,
+      success_rate: 0.4,
+      reasons: Object.freeze(["conflicted_evidence", "low_success_rate"]),
+    };
+    return Promise.resolve({
+      class_id: classId,
+      members_total: klass.members.size,
+      members_active: perMember.filter((m) => m.completed_count > 0 || m.training_minutes > 0).length,
+      assignments_total: klass.assignments.length,
+      completions_total: completionsTotal,
+      completion_rate_overall: expected > 0 ? Math.round((completionsTotal / expected) * 1000) / 1000 : null,
+      completion_rate_on_time: expected > 0 ? Math.round((completionsTotal / expected) * 1000) / 1000 : null,
+      per_member: Object.freeze(perMember),
+      weak_spots: klass.assignments.length > 0 ? Object.freeze([seedWeakSpot]) : Object.freeze([]),
+    });
+  }
+
+  #summaryOf(klass: MockClassRecord): ClassSummary {
+    return Object.freeze({
+      class_id: klass.class_id,
+      name: klass.name,
+      description: klass.description,
+      member_count: klass.members.size,
+      archived: klass.archived,
+      is_creator: klass.creator_id === this.#account.account_id,
+    });
   }
 
   // -------------------------------------------------------------------------

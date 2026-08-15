@@ -10,7 +10,8 @@
     "contracts:generate": "pnpm --filter @llos/contracts generate",
     "metrics:speech": "node scripts/speech-metrics.mjs",
     "demo:loop": "node scripts/demo-loop.mjs",
-    "e2e:p4": "node scripts/e2e-p4.mjs"
+    "e2e:p4": "node scripts/e2e-p4.mjs",
+    "e2e:p5": "node scripts/e2e-p5.mjs"
   },
   "packageManager": "pnpm@11.21.0",
   "engines": {

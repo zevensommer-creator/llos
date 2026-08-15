@@ -95,7 +95,119 @@ export type ReviewOutcome =
   | { status: "submitted"; rating: number }
   | { status: "requires_entitlement"; message: string }
   | { status: "invalid_rating"; message: string }
-  | { status: "not_found" };
+  | { status: "not_found"; message: string };
+
+// ---------------------------------------------------------------------------
+// T-029: 班级流程（product_spec §5：建班 → 邀请码入班 → 分配 → 顺序/截止 →
+// 通知 → 统计）。形状与 core ClassService/ClassAssignmentService/projectClassStats
+// 对齐；门禁结果由服务端（Mock 模拟）裁决，UI 隐藏按钮不是安全控制。
+// ---------------------------------------------------------------------------
+
+/** 班级摘要（我的班级列表项）。 */
+export interface ClassSummary {
+  class_id: string;
+  name: string;
+  description?: string;
+  member_count: number;
+  archived: boolean;
+  is_creator: boolean;
+}
+
+export interface ClassMemberView {
+  account_id: string;
+  display_name: string;
+  joined_at: string;
+  is_creator: boolean;
+}
+
+/** 班级分配条目（教师视角）。 */
+export interface ClassAssignmentView {
+  assignment_id: string;
+  dlc_id: string;
+  title: string;
+  sequence: number;
+  due_at?: string;
+  mode: "auto_free" | "teacher_purchase" | "recommend_self_purchase";
+  entitlements_granted: boolean;
+}
+
+/** 班级分配条目（学生视角，§5.5 先修顺序：blocked 仅为呈现门，不锁学习权利）。 */
+export interface ClassUnlockItem {
+  assignment_id: string;
+  dlc_id: string;
+  title: string;
+  sequence: number;
+  due_at?: string;
+  unlocked: boolean;
+  completed: boolean;
+  blocked_by: readonly string[];
+}
+
+export interface ClassNoticeView {
+  notice_id: string;
+  text: string;
+  created_at: string;
+  author_name: string;
+}
+
+/** 班级详情（成员/分配/通知；教师额外含统计）。 */
+export interface ClassDetailView {
+  class_summary: ClassSummary;
+  members: readonly ClassMemberView[];
+  assignments: readonly ClassAssignmentView[];
+  notices: readonly ClassNoticeView[];
+}
+
+/** 班级统计（教师视角，product_spec §5.6：前端只读 Core 投影）。 */
+export interface ClassStatsView {
+  class_id: string;
+  members_total: number;
+  members_active: number;
+  assignments_total: number;
+  completions_total: number;
+  completion_rate_overall: number | null;
+  completion_rate_on_time: number | null;
+  per_member: readonly {
+    account_id: string;
+    display_name: string;
+    assigned_count: number;
+    completed_count: number;
+    training_minutes: number;
+  }[];
+  weak_spots: readonly {
+    claim_ref: string;
+    members_affected: number;
+    success_rate: number | null;
+    reasons: readonly string[];
+  }[];
+}
+
+export interface ClassInvitationView {
+  code: string;
+  max_uses: number;
+  uses: number;
+}
+
+export type CreateClassOutcome =
+  | { status: "created"; class: ClassSummary }
+  | { status: "permission_denied"; required_capability: "create_class"; message: string }
+  | { status: "invalid_name"; message: string };
+
+export type JoinClassOutcome =
+  | { status: "joined"; class: ClassSummary }
+  | { status: "already_member"; class: ClassSummary }
+  | { status: "invalid_code"; message: string }
+  | { status: "class_archived"; message: string };
+
+export type AssignOutcome =
+  | { status: "assigned"; assignment: ClassAssignmentView }
+  | { status: "not_creator"; message: string }
+  | { status: "invalid_input"; message: string };
+
+export type PostNoticeOutcome =
+  | { status: "posted"; notice: ClassNoticeView }
+  | { status: "not_creator"; message: string }
+  | { status: "invalid_text"; message: string };
 
 // ---------------------------------------------------------------------------
 // UI-2: 七态加载模型（正常 / 空白 / 加载 / 权限不足 / 离线 / 可恢复失败 / 不可恢复失败）
@@ -307,4 +419,15 @@ export interface ApiClient {
   getMarketListing(dlcId: string): Promise<MarketListingDetail | null>;
   acquireListing(dlcId: string): Promise<AcquireOutcome>;
   submitReview(dlcId: string, rating: number, text?: string): Promise<ReviewOutcome>;
+
+  /** T-029 班级流程：列表 / 建班 / 入班 / 详情 / 邀请码 / 分配 / 通知 / 学生解锁 / 教师统计。 */
+  listMyClasses(): Promise<readonly ClassSummary[]>;
+  createClass(name: string, description?: string): Promise<CreateClassOutcome>;
+  joinClass(code: string): Promise<JoinClassOutcome>;
+  getClassDetail(classId: string): Promise<ClassDetailView | null>;
+  issueClassInvitation(classId: string, maxUses?: number): Promise<ClassInvitationView | null>;
+  assignDlc(classId: string, dlcId: string, options?: { sequence?: number; dueAt?: string }): Promise<AssignOutcome>;
+  postClassNotice(classId: string, text: string): Promise<PostNoticeOutcome>;
+  loadClassUnlockState(classId: string): Promise<readonly ClassUnlockItem[] | null>;
+  loadClassStats(classId: string): Promise<ClassStatsView | null>;
 }
