@@ -40,6 +40,7 @@
 | T-016 | P0.5.1 契约一致性 hotfix（ADR-013） | done | trae | 高 | T-013 | Human 复审三严重问题修复：material-pack/session-composition/material-snapshot 升 0.2.1；状态词汇两层统一；T-003 过期锁删除；18 例 fixtures 全通过 |
 | T-017 | UI-2：Mock 四旅程 | doing | kimi | 高 | T-015 | Human 指派前端线移交 kimi（Kimi K3）；聊天/学习/教师助手/电脑工作台 × 正常/空白/加载/权限不足/离线/可恢复/不可恢复；交接包见 frontend/docs/HANDOFF.md（验收门 G1-G4） |
 | T-018 | P2a：编译器管线 + golden test | done | trae | 高 | T-014 | 已合并 main（cb1b6f6 + 47e159c）；@llos/compiler 三段管线（material.validate → pedagogical.plan → executable.lower，12 类型化错误码）；参考素材 de-hotel-checkin + 参考 DLC de.fsi-construction；30 测试（golden ×2/确定性/素材门 ×7/manifest 反例 ×7）；全 workspace 116 测试 + typecheck 绿；锁已释放。遗留 follow-up：claim 权重归一化、零框架包边界 |
+| T-019 | P2b：训练执行引擎 + FSRS 调度器 | review | trae | 高 | T-018 | core/src/runtime SessionExecutor（12 原语闭集、注册表事件产出、branch 条件路由、迭代/时长硬上限→typed abort、能力失败降级、$complete/$stop 终止符）+ core/src/scheduler FSRS（ts-fsrs 5.4，事件流重放重建 Card，低置信观察过滤）；25 新测试（执行器 19 + FSRS 6）；顺手修复：.gitattributes 强制 LF（T-018 golden 跨平台行尾缺陷——autocrlf 致模板哈希漂移）；全 workspace 141 测试绿；待 Human 确认合并 |
 
 ---
 
@@ -90,6 +91,8 @@
 | 2026-08-16 | kimi | 认领 T-017（UI-2 Mock 四旅程）→ doing；G1 环境验证：前端线独立全绿（build/test/typecheck 通过，前端 6 测试过）。**发现 main 整体构建红**：@llos/compiler（T-018，trae 的 doing 任务，其 touched_paths）TS 报错未过——不属本任务范围，按 AGENTS §4 不改，需 trae 修复或挪 feature 分支 |
 | 2026-08-16 | TRAE | T-018 完成 → review：@llos/compiler 三段管线 + 参考素材/参考 DLC + 30 测试（golden ×2/确定性/素材门/manifest 反例）；回应 kimi 登记项——编译器 typecheck 已绿，全 workspace 116 测试通过；分支 feature/trae-compiler-golden 推送待审，合并 main 后释放锁 |
 | 2026-08-16 | Human | 确认 T-018 合并：feature/trae-compiler-golden → main（cb1b6f6 + merge 47e159c）；T-018 置 done，锁已释放；下一步 T-019 |
+| 2026-08-16 | TRAE | T-019 认领（P2b 训练执行引擎 + FSRS 调度器）→ doing；分支 feature/trae-runtime-executor；范围 core/src/runtime + core/src/scheduler；SM-2 冷启动回退记为 follow-up（ts-fsrs 默认权重即冷启动策略） |
+| 2026-08-16 | TRAE | T-019 完成 → review：SessionExecutor + FSRS（25 新测试）；发现并修复 T-018 遗留跨平台缺陷——autocrlf 把模板检出为 CRLF 致 golden 哈希漂移，Linux CI 必红；新增 .gitattributes（* text=auto eol=lf）根因修复；全 workspace 141 测试绿 |
 
 ---
 
