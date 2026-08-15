@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type {
   ApiClient,
   ByokEntryView,
@@ -6,11 +6,14 @@ import type {
   SandboxReportView,
   StudioDlcView,
   StudioDraftView,
+  StudioTemplateView,
   StudioUnitView,
 } from "@llos/api-client";
 
-// desktop_web Studio 向导页（product_spec §6.2/§6.4/§6.7/§6.9）：
-// 粘贴文字 → AI 结构化预览表单 → 沙箱试用 → 发布（下架告知义务确认）。
+// desktop_web Studio 向导页（product_spec §6.2/§6.4/§6.6/§6.7/§6.9）：
+// 模板加速器一键预填 / 粘贴文字 / 上传 PNG（OCR）→ AI 结构化预览表单 →
+// 沙箱试用 → 发布（下架告知义务确认）。专家模式可绕过向导直接编辑
+// 训练模式定义与课程清单（manifest）；专家编辑后向导锁定。
 // 版本号对创作者隐形；校验错误以教学语言呈现（"第 N 课缺少标题"），
 // 不暴露技术细节；发布/下架门禁由服务端裁决，UI 只呈现结果。
 
@@ -69,10 +72,20 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
   const [cefr, setCefr] = useState<StudioUnitCefr>("A2");
   const [text, setText] = useState("");
 
+  const [templates, setTemplates] = useState<readonly StudioTemplateView[] | null>(null);
+  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+
   const [draft, setDraft] = useState<StudioDraftView | null>(null);
   const [units, setUnits] = useState<EditableUnit[]>([]);
   const [report, setReport] = useState<SandboxReportView | null>(null);
   const [published, setPublished] = useState<StudioDlcView | null>(null);
+
+  /** 专家模式：true 表示当前在专家编辑视图（训练模式 / manifest 直接编辑）。 */
+  const [expertMode, setExpertMode] = useState(false);
+  const [modesJson, setModesJson] = useState("");
+  const [manifestJson, setManifestJson] = useState("");
 
   const [byokKeys, setByokKeys] = useState<readonly ByokEntryView[] | null>(null);
   const [byokFamily, setByokFamily] = useState("deepseek");
@@ -107,6 +120,16 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
     };
   }, [client, dlcVersion]);
 
+  useEffect(() => {
+    let live = true;
+    void client.listStudioTemplates().then((tpls) => {
+      if (live) setTemplates(tpls);
+    });
+    return () => {
+      live = false;
+    };
+  }, [client]);
+
   function resetWizard() {
     setPhase("input");
     setNotice(null);
@@ -117,6 +140,104 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
     setPublished(null);
     setTitle("");
     setText("");
+    setExpertMode(false);
+    setActiveTemplate(null);
+    setModesJson("");
+    setManifestJson("");
+  }
+
+  async function applyTemplate(tpl: StudioTemplateView) {
+    setNotice(null);
+    setWarn(null);
+    const outcome = await client.createStudioDraftFromTemplate(tpl.template_id, language, cefr);
+    if (outcome.status !== "created") {
+      setWarn(outcome.message);
+      return;
+    }
+    setActiveTemplate(tpl.template_id);
+    setDraft(outcome.draft);
+    setUnits(outcome.draft.units.map(unitFromView));
+    setTitle(outcome.draft.title);
+    setPhase("review");
+    setNotice(`已从模板「${tpl.title}」预填：AI 识别出 ${outcome.draft.units.length} 个学习单元，可逐课修改`);
+  }
+
+  async function startDraftFromImage(base64: string) {
+    setNotice(null);
+    setWarn(null);
+    setOcrBusy(true);
+    try {
+      const outcome = await client.createStudioDraft({
+        image: { base64, media_type: "image/png" },
+        title: title.trim() || "图片课程",
+        language,
+        cefrLevel: cefr,
+      });
+      if (outcome.status !== "created") {
+        setWarn(outcome.message);
+        return;
+      }
+      setDraft(outcome.draft);
+      setUnits(outcome.draft.units.map(unitFromView));
+      setTitle(outcome.draft.title);
+      setPhase("review");
+      setNotice(
+        `图片识别完成（OCR：${outcome.draft.ocr_by?.provider_id ?? "未知"}）：AI 识别出 ${outcome.draft.units.length} 个学习单元`,
+      );
+    } finally {
+      setOcrBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setWarn("请上传 PNG 图片（当前只支持图片 OCR 提取文字）");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        const base64 = result.includes(",") ? result.slice(result.indexOf(",") + 1) : result;
+        void startDraftFromImage(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function enterExpertMode() {
+    setWarn(null);
+    setModesJson(draft?.expert_edited ? "" : "[]");
+    setManifestJson(draft?.manifest_json ?? "");
+    setExpertMode(true);
+  }
+
+  async function saveExpertModes() {
+    if (!draft) return;
+    setWarn(null);
+    const outcome = await client.editTrainingModes(draft.draft_id, modesJson);
+    if (outcome.status !== "saved") {
+      setWarn(outcome.message);
+      return;
+    }
+    setDraft(outcome.draft);
+    setNotice("训练模式已保存并通过编译检查；向导编辑已锁定，继续确认后进入沙箱");
+  }
+
+  async function saveExpertManifest() {
+    if (!draft) return;
+    setWarn(null);
+    const outcome = await client.editManifest(draft.draft_id, manifestJson);
+    if (outcome.status !== "saved") {
+      setWarn(outcome.message);
+      return;
+    }
+    setDraft(outcome.draft);
+    setTitle(outcome.draft.title);
+    setNotice("课程清单已保存并通过编译检查；向导编辑已锁定");
   }
 
   async function startDraft() {
@@ -152,15 +273,19 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
   async function confirmDraft() {
     if (!draft) return;
     setWarn(null);
-    const outcome = await client.confirmStudioDraft(draft.draft_id, {
-      title,
-      units: units.map((u) => ({
-        frame_type: u.frame_type,
-        title: u.title,
-        pattern: u.pattern,
-        ...(u.lemma.trim() ? { lemma: u.lemma.trim() } : {}),
-      })),
-    });
+    // 专家模式草稿：向导编辑已锁定，确认时不携带编辑内容（仅置 confirmed）。
+    const edit = draft.expert_edited
+      ? {}
+      : {
+          title,
+          units: units.map((u) => ({
+            frame_type: u.frame_type,
+            title: u.title,
+            pattern: u.pattern,
+            ...(u.lemma.trim() ? { lemma: u.lemma.trim() } : {}),
+          })),
+        };
+    const outcome = await client.confirmStudioDraft(draft.draft_id, edit);
     if (outcome.status !== "saved") {
       setWarn(outcome.status === "not_found" ? "草稿不存在" : outcome.message);
       return;
@@ -235,6 +360,11 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
     setDraft(outcome.draft);
     setUnits(outcome.draft.units.map(unitFromView));
     setTitle(outcome.draft.title);
+    setExpertMode(Boolean(outcome.draft.expert_edited));
+    if (outcome.draft.expert_edited) {
+      setModesJson(outcome.draft.training_modes_json ?? "");
+      setManifestJson(outcome.draft.manifest_json ?? "");
+    }
     setPhase("review");
     setNotice("修订草稿已创建：以已发布内容为基线，确认后发布会自动更新版本");
   }
@@ -343,90 +473,190 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
           ) : null}
 
           {phase === "input" ? (
-            <form className="studio-form" onSubmit={(e) => { e.preventDefault(); void startDraft(); }}>
-              <label className="control">
-                课程标题
-                <input type="text" value={title} placeholder="如：咖啡馆德语速成" onChange={(e) => setTitle(e.target.value)} />
-              </label>
-              <div className="studio-form-row">
-                <label className="control">
-                  语言
-                  <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                    {LANGUAGE_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
+            <div>
+              <section className="studio-panel studio-template-panel">
+                <h3 className="studio-panel-title">模板加速器（可选起点）</h3>
+                <p className="studio-muted">从预设模板一键开始，稍后可自由修改；也可以跳过，直接粘贴或上传。</p>
+                {templates === null ? (
+                  <p className="studio-muted">加载模板中…</p>
+                ) : (
+                  <div className="studio-templates">
+                    {templates.map((tpl) => (
+                      <button
+                        key={tpl.template_id}
+                        type="button"
+                        className={`studio-template-card ${activeTemplate === tpl.template_id ? "studio-template-card--active" : ""}`}
+                        onClick={() => void applyTemplate(tpl)}
+                      >
+                        <span className="studio-template-title">{tpl.title}</span>
+                        <span className="studio-template-meta">{tpl.cefr_suggestion} · {tpl.description}</span>
+                      </button>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                )}
+              </section>
+
+              <form className="studio-form" onSubmit={(e) => { e.preventDefault(); void startDraft(); }}>
                 <label className="control">
-                  难度（CEFR）
-                  <select value={cefr} onChange={(e) => setCefr(e.target.value as StudioUnitCefr)}>
-                    {CEFR_OPTIONS.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
+                  课程标题
+                  <input type="text" value={title} placeholder="如：咖啡馆德语速成" onChange={(e) => setTitle(e.target.value)} />
                 </label>
-              </div>
-              <label className="control">
-                备课内容（粘贴文字；一行一课，格式「前缀: 标题 | 例句」，前缀可用 Szenario / Valenz / 其他）
-                <textarea
-                  className="studio-textarea"
-                  rows={8}
-                  value={text}
-                  placeholder={SAMPLE_TEXT}
-                  onChange={(e) => setText(e.target.value)}
-                />
-              </label>
-              <div className="studio-form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setText(SAMPLE_TEXT)}>
-                  填入示例
-                </button>
-                <button type="submit" className="btn">AI 结构化</button>
-              </div>
-            </form>
+                <div className="studio-form-row">
+                  <label className="control">
+                    语言
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                      {LANGUAGE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="control">
+                    难度（CEFR）
+                    <select value={cefr} onChange={(e) => setCefr(e.target.value as StudioUnitCefr)}>
+                      {CEFR_OPTIONS.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label className="control">
+                  备课内容（粘贴文字；一行一课，格式「前缀: 标题 | 例句」，前缀可用 Szenario / Valenz / 其他）
+                  <textarea
+                    className="studio-textarea"
+                    rows={8}
+                    value={text}
+                    placeholder={SAMPLE_TEXT}
+                    onChange={(e) => setText(e.target.value)}
+                  />
+                </label>
+                <div className="studio-form-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setText(SAMPLE_TEXT)}>
+                    填入示例
+                  </button>
+                  <button type="button" className="btn btn-secondary" disabled={ocrBusy} onClick={() => fileRef.current?.click()}>
+                    {ocrBusy ? "图片识别中…" : "上传 PNG 图片识别"}
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    style={{ display: "none" }}
+                    onChange={onFilePicked}
+                  />
+                  <button type="submit" className="btn">AI 结构化</button>
+                </div>
+              </form>
+            </div>
           ) : null}
 
           {phase === "review" ? (
             <div className="studio-review">
-              <label className="control">
-                课程标题
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-              </label>
-              {draft ? (
-                <p className="studio-muted">
-                  AI（{draft.structured_by.provider_id}）识别出 {draft.units.length} 个学习单元；下面可以逐课修改、删除或补充。
-                </p>
-              ) : null}
-              <ul className="studio-units">
-                {units.map((u, i) => (
-                  <li key={i} className="studio-unit">
-                    <div className="studio-unit-head">
-                      <span className="studio-unit-no">第 {i + 1} 课 · {FRAME_LABEL[u.frame_type]}</span>
-                      <button type="button" className="btn btn-secondary" onClick={() => removeUnit(i)}>
-                        删除
-                      </button>
-                    </div>
-                    <label className="control">
-                      标题
-                      <input type="text" value={u.title} onChange={(e) => updateUnit(i, { title: e.target.value })} />
-                    </label>
-                    <label className="control">
-                      例句
-                      <input type="text" value={u.pattern} onChange={(e) => updateUnit(i, { pattern: e.target.value })} />
-                    </label>
-                    {u.frame_type === "argument_structure" ? (
-                      <label className="control">
-                        核心动词
-                        <input type="text" value={u.lemma} onChange={(e) => updateUnit(i, { lemma: e.target.value })} />
-                      </label>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-              <div className="studio-form-actions">
-                <button type="button" className="btn btn-secondary" onClick={addUnit}>添加一课</button>
-                <button type="button" className="btn btn-secondary" onClick={resetWizard}>放弃草稿</button>
-                <button type="button" className="btn" onClick={() => void confirmDraft()}>确认内容</button>
+              <div className="studio-expert-toggle">
+                <span className={`studio-expert-tab ${!expertMode && !draft?.expert_edited ? "studio-expert-tab--active" : ""}`}>
+                  向导编辑
+                </span>
+                <button
+                  type="button"
+                  className={`studio-expert-tab ${expertMode || draft?.expert_edited ? "studio-expert-tab--active" : ""}`}
+                  onClick={enterExpertMode}
+                  disabled={Boolean(draft?.expert_edited) && !expertMode}
+                >
+                  专家模式
+                  {draft?.expert_edited ? "（已锁定）" : ""}
+                </button>
               </div>
+
+              {expertMode ? (
+                <div className="studio-expert">
+                  <p className="studio-muted">
+                    技术型创作者可直接编辑训练模式定义与课程清单（manifest）。保存时会做编译检查；检查不通过会给出可理解的错误。
+                    保存后向导编辑将被锁定，避免静默覆盖专家内容。
+                  </p>
+                  <label className="control">
+                    训练模式定义（JSON，可选；仅当需要自定义训练模式时填写）
+                    <textarea
+                      className="studio-textarea studio-textarea--code"
+                      rows={9}
+                      value={modesJson}
+                      spellCheck={false}
+                      placeholder={'{"modes":[{"mode_ref":"mode.expert.dictation","claim_suffix":"checkin_dialogue","steps":[{"primitive":"present"},{"primitive":"capture_text"},{"primitive":"evaluate"},{"primitive":"feedback"},{"primitive":"schedule"}]}],"stage_modes":{"frame.1":"mode.expert.dictation"}}'}
+                      onChange={(e) => setModesJson(e.target.value)}
+                    />
+                  </label>
+                  <div className="studio-form-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => void saveExpertModes()}>
+                      保存训练模式
+                    </button>
+                  </div>
+                  <label className="control">
+                    课程清单 manifest（JSON；dlc_id 不可修改）
+                    <textarea
+                      className="studio-textarea studio-textarea--code"
+                      rows={10}
+                      value={manifestJson}
+                      spellCheck={false}
+                      onChange={(e) => setManifestJson(e.target.value)}
+                    />
+                  </label>
+                  <div className="studio-form-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => void saveExpertManifest()}>
+                      保存清单
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={!draft?.expert_edited}
+                      onClick={() => void confirmDraft()}
+                    >
+                      确认并继续
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="control">
+                    课程标题
+                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </label>
+                  {draft ? (
+                    <p className="studio-muted">
+                      AI（{draft.structured_by.provider_id}）识别出 {draft.units.length} 个学习单元；下面可以逐课修改、删除或补充。
+                      {draft.ocr_by ? ` 已通过图片 OCR（${draft.ocr_by.provider_id}）提取文字。` : ""}
+                    </p>
+                  ) : null}
+                  <ul className="studio-units">
+                    {units.map((u, i) => (
+                      <li key={i} className="studio-unit">
+                        <div className="studio-unit-head">
+                          <span className="studio-unit-no">第 {i + 1} 课 · {FRAME_LABEL[u.frame_type]}</span>
+                          <button type="button" className="btn btn-secondary" onClick={() => removeUnit(i)}>
+                            删除
+                          </button>
+                        </div>
+                        <label className="control">
+                          标题
+                          <input type="text" value={u.title} onChange={(e) => updateUnit(i, { title: e.target.value })} />
+                        </label>
+                        <label className="control">
+                          例句
+                          <input type="text" value={u.pattern} onChange={(e) => updateUnit(i, { pattern: e.target.value })} />
+                        </label>
+                        {u.frame_type === "argument_structure" ? (
+                          <label className="control">
+                            核心动词
+                            <input type="text" value={u.lemma} onChange={(e) => updateUnit(i, { lemma: e.target.value })} />
+                          </label>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="studio-form-actions">
+                    <button type="button" className="btn btn-secondary" onClick={addUnit}>添加一课</button>
+                    <button type="button" className="btn btn-secondary" onClick={resetWizard}>放弃草稿</button>
+                    <button type="button" className="btn" onClick={() => void confirmDraft()}>确认内容</button>
+                  </div>
+                </>
+              )}
             </div>
           ) : null}
 

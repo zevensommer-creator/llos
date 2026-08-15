@@ -224,3 +224,164 @@ test("drafts are isolated per creator", async () => {
   assert.equal(await learner.getStudioDraft(draft.draft_id), null);
   assert.equal((await learner.editStudioDraft(draft.draft_id, {})).status, "not_found");
 });
+
+test("templates: preset list is available and one-click prefill creates a draft", async () => {
+  const teacher = setup();
+  const templates = await teacher.listStudioTemplates();
+  assert.ok(templates.length >= 3);
+  assert.equal(templates[0].template_id, "tpl.scenario-dialogue");
+  assert.ok(!("prefilled_text" in {}) || templates[0].prefilled_text.length > 0);
+
+  const outcome = await teacher.createStudioDraftFromTemplate("tpl.verb-valence", "de-DE", "B1");
+  assert.equal(outcome.status, "created");
+  assert.equal(outcome.draft.units.length, 3);
+  assert.equal(outcome.draft.units[0].frame_type, "argument_structure");
+  assert.equal(outcome.draft.units[0].lemma, "empfehlen");
+
+  const unknown = await teacher.createStudioDraftFromTemplate("tpl.missing", "de-DE", "A1");
+  assert.equal(unknown.status, "structure_invalid");
+});
+
+test("png ingest: base64 image goes through OCR then structure; empty image is rejected", async () => {
+  const teacher = setup();
+  const pngText = Buffer.from(CAFE_TEXT, "utf8").toString("base64");
+  const outcome = await teacher.createStudioDraft({
+    image: { base64: pngText, media_type: "image/png" },
+    title: "Foto Deutsch",
+    language: "de-DE",
+    cefrLevel: "A2",
+  });
+  assert.equal(outcome.status, "created");
+  assert.equal(outcome.draft.ocr_by.provider_id, "provider.byok.deepseek");
+  assert.equal(outcome.draft.units.length, 3);
+
+  const empty = await teacher.createStudioDraft({
+    image: { base64: "" },
+    title: "Leer",
+    language: "de-DE",
+    cefrLevel: "A2",
+  });
+  assert.equal(empty.status, "ingest_empty");
+  assert.match(empty.message, /图片里没有识别出/);
+});
+
+function expertModesJson() {
+  return JSON.stringify({
+    modes: [
+      {
+        mode_ref: "mode.expert.dictation",
+        claim_suffix: "checkin_dialogue",
+        steps: [
+          { primitive: "present", prompt_prefix: "Diktat: " },
+          { primitive: "capture_text", timeout_ms: 45000, max_length: 300 },
+          { primitive: "evaluate" },
+          { primitive: "feedback" },
+          { primitive: "schedule", interval: "PT12H" },
+        ],
+      },
+    ],
+    stage_modes: { "frame.1": "mode.expert.dictation" },
+  });
+}
+
+test("expert training modes: valid definition saves, wizard edits lock afterwards", async () => {
+  const teacher = setup();
+  const draft = await createCafeDraft(teacher);
+  const modesJson = expertModesJson();
+
+  const saved = await teacher.editTrainingModes(draft.draft_id, modesJson);
+  assert.equal(saved.status, "saved");
+  assert.equal(saved.draft.expert_edited, true);
+  assert.equal(saved.draft.status, "structured");
+
+  const wizard = await teacher.editStudioDraft(draft.draft_id, { title: "改" });
+  assert.equal(wizard.status, "state_invalid");
+  assert.match(wizard.message, /专家模式/);
+
+  const confirm = await teacher.confirmStudioDraft(draft.draft_id, {});
+  assert.equal(confirm.status, "saved");
+  assert.equal(confirm.draft.status, "confirmed");
+});
+
+test("expert training modes: guard failures surface teaching-language errors", async () => {
+  const teacher = setup();
+  const draft = await createCafeDraft(teacher);
+
+  const badJson = await teacher.editTrainingModes(draft.draft_id, "{oops");
+  assert.equal(badJson.status, "invalid_json");
+  assert.match(badJson.message, /不是有效的 JSON/);
+
+  const twoCaptures = JSON.stringify({
+    modes: [
+      {
+        mode_ref: "mode.expert.dictation",
+        claim_suffix: "checkin_dialogue",
+        steps: [
+          { primitive: "present" },
+          { primitive: "capture_text" },
+          { primitive: "capture_audio" },
+          { primitive: "evaluate" },
+          { primitive: "feedback" },
+          { primitive: "schedule" },
+        ],
+      },
+    ],
+  });
+  const guarded = await teacher.editTrainingModes(draft.draft_id, twoCaptures);
+  assert.equal(guarded.status, "invalid_content");
+  assert.match(guarded.message, /恰好包含一个学员作答步骤/);
+
+  const undeclared = expertModesJson().replace("checkin_dialogue", "claim_not_declared");
+  const rejected = await teacher.editTrainingModes(draft.draft_id, undeclared);
+  assert.equal(rejected.status, "invalid_content");
+  assert.match(rejected.message, /不在本课程清单中/);
+});
+
+test("expert manifest: display copy edits save; dlc_id tampering is rejected", async () => {
+  const teacher = setup();
+  const draft = await createCafeDraft(teacher);
+
+  const manifest = JSON.stringify({
+    dlc_id: "dlc.studio.mock.999",
+    display_name: "Café Deutsch — Expert",
+    claims: [{ claim_ref: "x:claim/a", evidence_policy_ref: "policy.performance" }],
+    passes: [{ id: "pedagogical.plan", entrypoint: "manifest", version: "0.2.0" }],
+  });
+  const tampered = await teacher.editManifest(draft.draft_id, manifest);
+  assert.equal(tampered.status, "invalid_content");
+  assert.match(tampered.message, /dlc_id/);
+
+  const good = await teacher.editManifest(
+    draft.draft_id,
+    JSON.stringify({
+      dlc_id: "dlc.studio.mock.1",
+      display_name: "Café Expert",
+      schema_version: "0.2.0",
+      language: "de-DE",
+      claims: [{ claim_ref: "dlc.studio.mock.1:claim/checkin_dialogue", evidence_policy_ref: "policy.performance" }],
+      passes: [{ id: "pedagogical.plan", entrypoint: "manifest", version: "0.2.0" }],
+    }),
+  );
+  assert.equal(good.status, "saved");
+  assert.equal(good.draft.expert_edited, true);
+  assert.equal(good.draft.title, "Café Expert");
+});
+
+test("expert-mode DLC publishes; revision inherits the training-mode definition", async () => {
+  const teacher = setup();
+  const draft = await createCafeDraft(teacher);
+  const modesJson = expertModesJson();
+  await teacher.editTrainingModes(draft.draft_id, modesJson);
+  await teacher.confirmStudioDraft(draft.draft_id, {});
+  const { dlc } = await teacher.publishStudioDraft(draft.draft_id, {
+    summary: "专家模式听写课程",
+    difficulty: "A2",
+    tags: ["听写"],
+    acknowledged_delist_terms: true,
+  });
+  assert.equal(dlc.dlc_id.length > 0, true);
+
+  const revision = await teacher.startRevision(dlc.dlc_id);
+  assert.equal(revision.status, "created");
+  assert.equal(revision.draft.expert_edited, true, "revision inherits expert editing");
+});

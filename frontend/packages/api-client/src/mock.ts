@@ -38,7 +38,9 @@ import type {
   SandboxOutcome,
   StudioDraftView,
   StudioDlcView,
+  StudioTemplateView,
   StudioUnitView,
+  ExpertEditStudioOutcome,
   TeacherMobileDashboardViewModel,
   WorkbenchSection,
   WorkbenchView,
@@ -320,6 +322,7 @@ interface MockByokRecord {
 
 interface MockStudioDraft {
   draft_id: string;
+  dlc_id: string;
   creator_id: string;
   status: "structured" | "confirmed" | "published" | "discarded";
   title: string;
@@ -327,7 +330,24 @@ interface MockStudioDraft {
   cefr_level: string;
   units: StudioUnitView[];
   structured_by: { provider_id: string; model_id?: string };
+  ocr_by?: { provider_id: string; model_id?: string };
+  /** 专家模式：训练模式定义 JSON（manifest extensions 经 sha256 引用它）。 */
+  training_modes_json?: string;
+  /** 专家模式：manifest 或训练模式被直接编辑过；向导编辑随之锁定。 */
+  expert_edited?: boolean;
+  /** 完整清单（专家 manifest 编辑器的基线；draftView 以 JSON 快照暴露）。 */
+  manifest: MockManifest;
   updated_at: string;
+}
+
+/** Mock 清单：对齐真实后端 buildManifestDraft 的关键字段（专家编辑门禁用）。 */
+interface MockManifest {
+  schema_version: string;
+  dlc_id: string;
+  display_name: string;
+  language: string;
+  claims: { claim_ref: string; evidence_policy_ref: string }[];
+  passes: { id: string; entrypoint: string; version: string }[];
 }
 
 interface MockStudioDlc {
@@ -344,14 +364,58 @@ interface MockStudioDlc {
   /** 修订基线（§6.7）：startRevision 以此为起点新建草稿。 */
   units: StudioUnitView[];
   cefr_level: string;
+  /** 专家模式定义随发布落档；修订草稿继承（对齐 @llos/studio）。 */
+  training_modes_json?: string;
+  expert_edited?: boolean;
 }
 
 interface MockStudioStore {
   byok: MockByokRecord[];
   drafts: Map<string, MockStudioDraft>;
   published: Map<string, MockStudioDlc>;
+  templates: readonly StudioTemplateView[];
   nextId: { draft: number; dlc: number; byok: number };
 }
+
+/** 模板加速器（对齐 @llos/studio 的 STUDIO_TEMPLATES；仅预填文本，无教学策略）。 */
+const STUDIO_TEMPLATES_MOCK: readonly StudioTemplateView[] = [
+  {
+    template_id: "tpl.scenario-dialogue",
+    title: "情景对话",
+    description: "咖啡馆、问路、预约等日常情景，适合从零组织一门 A2 口语课。",
+    cefr_suggestion: "A2",
+    title_suggestion: "Alltagssituationen auf Deutsch",
+    prefilled_text: [
+      "Szenario: Im Café bestellen | Ich hätte gern einen Kaffee, bitte.",
+      "Szenario: Nach dem Weg fragen | Entschuldigung, wie komme ich zum Bahnhof?",
+      "Szenario: Einen Termin vereinbaren | Ich möchte gern einen Termin machen.",
+    ].join("\n"),
+  },
+  {
+    template_id: "tpl.verb-valence",
+    title: "动词配价",
+    description: "围绕德语动词配价（及物/双宾/介词补足）组织操练单元。",
+    cefr_suggestion: "B1",
+    title_suggestion: "Deutsche Verbvalenz üben",
+    prefilled_text: [
+      "Valenz: empfehlen | Der Kellner empfiehlt uns den Kuchen. | empfehlen",
+      "Valenz: schenken | Die Großmutter schenkt dem Kind ein Buch. | schenken",
+      "Valenz: erklären | Der Lehrer erklärt den Schülern die Regel. | erklären",
+    ].join("\n"),
+  },
+  {
+    template_id: "tpl.polite-construction",
+    title: "礼貌构式",
+    description: "虚拟式请求、婉转追问等礼貌表达的构式训练。",
+    cefr_suggestion: "A2",
+    title_suggestion: "Höflich auf Deutsch",
+    prefilled_text: [
+      "Konstruktion: Höfliche Bitte | Könnten Sie bitte das Wasser bringen?",
+      "Konstruktion: Höfliche Nachfrage | Könnten Sie das bitte wiederholen?",
+      "Konstruktion: Wunsch äußern | Ich würde gern ein Einzelzimmer nehmen.",
+    ].join("\n"),
+  },
+];
 
 function seedStudioStore(): MockStudioStore {
   const store: MockStudioStore = {
@@ -367,6 +431,7 @@ function seedStudioStore(): MockStudioStore {
     ],
     drafts: new Map(),
     published: new Map(),
+    templates: STUDIO_TEMPLATES_MOCK,
     nextId: { draft: 1, dlc: 1, byok: 2 },
   };
   return store;
@@ -439,6 +504,10 @@ function draftView(draft: MockStudioDraft): StudioDraftView {
     cefr_level: draft.cefr_level,
     units: Object.freeze(draft.units.map((u) => Object.freeze({ ...u }))),
     structured_by: Object.freeze({ ...draft.structured_by }),
+    ...(draft.ocr_by ? { ocr_by: Object.freeze({ ...draft.ocr_by }) } : {}),
+    ...(draft.expert_edited ? { expert_edited: true } : {}),
+    manifest_json: JSON.stringify(draft.manifest),
+    ...(draft.training_modes_json ? { training_modes_json: draft.training_modes_json } : {}),
     updated_at: draft.updated_at,
   });
 }
@@ -962,7 +1031,27 @@ export class MockApiClient implements ApiClient {
         message: "创建课程草稿需要 create_dlc_draft 能力（服务端重新授权，product_spec §6.2）",
       });
     }
-    const structured = structureUnits(input.text);
+    // PNG 摄入（T-035）：base64 → OCR 提取文字 → 复用 structure 管线。
+    // Mock 层模拟确定性 OCR：空图片（极短 base64）→ 空文本；其余按行协议解析。
+    let sourceText = input.text;
+    let ocrBy;
+    if (input.image !== undefined) {
+      let decoded = "";
+      try {
+        decoded = Buffer.from(input.image.base64, "base64").toString("utf8");
+      } catch {
+        decoded = "";
+      }
+      if (decoded.trim().length === 0) {
+        return Promise.resolve({
+          status: "ingest_empty",
+          message: "图片里没有识别出可用的文字，请换一张清晰的图片，或直接粘贴文字",
+        });
+      }
+      sourceText = decoded;
+      ocrBy = { provider_id: "provider.byok.deepseek", model_id: "deepseek-ocr" };
+    }
+    const structured = structureUnits(sourceText ?? "");
     if (!structured.ok) {
       return Promise.resolve(
         structured.reason === "empty"
@@ -977,7 +1066,8 @@ export class MockApiClient implements ApiClient {
       );
     }
     const draft: MockStudioDraft = {
-      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft++}`,
+      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft}`,
+      dlc_id: `dlc.studio.mock.${STUDIO_STORE.nextId.draft}`,
       creator_id: this.#account.account_id,
       status: "structured",
       title: input.title.trim() || "未命名课程",
@@ -985,8 +1075,22 @@ export class MockApiClient implements ApiClient {
       cefr_level: input.cefrLevel,
       units: structured.units,
       structured_by: { provider_id: "provider.byok.deepseek", model_id: "deepseek-chat" },
+      ...(ocrBy ? { ocr_by: ocrBy } : {}),
+      manifest: {
+        schema_version: "0.2.0",
+        dlc_id: `dlc.studio.mock.${STUDIO_STORE.nextId.draft}`,
+        display_name: input.title.trim() || "未命名课程",
+        language: input.language,
+        claims: [
+          { claim_ref: `dlc.studio.mock.${STUDIO_STORE.nextId.draft}:claim/checkin_dialogue`, evidence_policy_ref: "policy.performance" },
+          { claim_ref: `dlc.studio.mock.${STUDIO_STORE.nextId.draft}:claim/verb_valence_dative`, evidence_policy_ref: "policy.performance" },
+          { claim_ref: `dlc.studio.mock.${STUDIO_STORE.nextId.draft}:claim/polite_request_construction`, evidence_policy_ref: "policy.performance" },
+        ],
+        passes: [{ id: "pedagogical.plan", entrypoint: "manifest", version: "0.2.0" }],
+      },
       updated_at: "2026-08-16T12:05:00Z",
     };
+    STUDIO_STORE.nextId.draft += 1;
     STUDIO_STORE.drafts.set(draft.draft_id, draft);
     return Promise.resolve({ status: "created", draft: draftView(draft) });
   }
@@ -1003,6 +1107,12 @@ export class MockApiClient implements ApiClient {
   }
 
   #applyEdit(draft: MockStudioDraft, edit: StudioDraftEditInput): EditStudioDraftOutcome {
+    if (draft.expert_edited) {
+      return {
+        status: "state_invalid",
+        message: "此草稿包含专家模式修改（训练模式或清单），向导编辑会覆盖它们；请继续用专家模式编辑，或重新创建草稿",
+      };
+    }
     if (edit.title !== undefined && edit.title.trim().length === 0) {
       return { status: "confirm_failed", message: "课程标题不能为空" };
     }
@@ -1038,6 +1148,13 @@ export class MockApiClient implements ApiClient {
         status: "state_invalid",
         message: `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
       });
+    }
+    const hasWizardEdit = edit.title !== undefined || (edit.units !== undefined && edit.units.length > 0);
+    // 专家模式：无向导编辑时直接确认；带向导编辑则走 #applyEdit（会被 expert 守卫拒绝）。
+    if (draft.expert_edited && !hasWizardEdit) {
+      draft.status = "confirmed";
+      draft.updated_at = "2026-08-16T12:12:00Z";
+      return Promise.resolve({ status: "saved", draft: draftView(draft) });
     }
     const applied = this.#applyEdit(draft, edit);
     if (applied.status !== "saved") return Promise.resolve(applied);
@@ -1110,8 +1227,7 @@ export class MockApiClient implements ApiClient {
     if (input.summary.trim().length === 0) {
       return Promise.resolve({ status: "invalid_input", message: "市场摘要不能为空" });
     }
-    const n = STUDIO_STORE.nextId.dlc++;
-    const dlcId = `dlc.studio.mock.${n}`;
+    const dlcId = draft.dlc_id;
     const dlc: MockStudioDlc = {
       dlc_id: dlcId,
       creator_id: draft.creator_id,
@@ -1125,6 +1241,8 @@ export class MockApiClient implements ApiClient {
       delisted: false,
       units: draft.units.map((u) => ({ ...u })),
       cefr_level: draft.cefr_level,
+      ...(draft.training_modes_json ? { training_modes_json: draft.training_modes_json } : {}),
+      ...(draft.expert_edited ? { expert_edited: true } : {}),
     };
     STUDIO_STORE.published.set(dlcId, dlc);
     draft.status = "published";
@@ -1154,7 +1272,8 @@ export class MockApiClient implements ApiClient {
       });
     }
     const draft: MockStudioDraft = {
-      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft++}`,
+      draft_id: `draft.studio.mock.${STUDIO_STORE.nextId.draft}`,
+      dlc_id: dlc.dlc_id,
       creator_id: dlc.creator_id,
       status: "structured",
       title: dlc.title,
@@ -1162,8 +1281,23 @@ export class MockApiClient implements ApiClient {
       cefr_level: dlc.cefr_level,
       units: dlc.units.map((u) => ({ ...u })),
       structured_by: { provider_id: "provider.byok.deepseek", model_id: "deepseek-chat" },
+      ...(dlc.training_modes_json ? { training_modes_json: dlc.training_modes_json } : {}),
+      ...(dlc.expert_edited ? { expert_edited: true } : {}),
+      manifest: {
+        schema_version: "0.2.0",
+        dlc_id: dlc.dlc_id,
+        display_name: dlc.title,
+        language: dlc.language,
+        claims: [
+          { claim_ref: `${dlc.dlc_id}:claim/checkin_dialogue`, evidence_policy_ref: "policy.performance" },
+          { claim_ref: `${dlc.dlc_id}:claim/verb_valence_dative`, evidence_policy_ref: "policy.performance" },
+          { claim_ref: `${dlc.dlc_id}:claim/polite_request_construction`, evidence_policy_ref: "policy.performance" },
+        ],
+        passes: [{ id: "pedagogical.plan", entrypoint: "manifest", version: "0.2.0" }],
+      },
       updated_at: "2026-08-16T12:30:00Z",
     };
+    STUDIO_STORE.nextId.draft += 1;
     STUDIO_STORE.drafts.set(draft.draft_id, draft);
     return Promise.resolve({ status: "created", draft: draftView(draft) });
   }
@@ -1180,6 +1314,189 @@ export class MockApiClient implements ApiClient {
     const listing = MARKET_STORE.listings.get(dlcId);
     if (listing) listing.delisted = true;
     return Promise.resolve({ status: "delisted", dlc_id: dlc.dlc_id });
+  }
+
+  // -------------------------------------------------------------------------
+  // T-035 Studio v2：模板加速器 + 专家模式编辑（Mock 层模拟服务端门禁）
+  // -------------------------------------------------------------------------
+
+  listStudioTemplates(): Promise<readonly StudioTemplateView[]> {
+    return Promise.resolve(
+      Object.freeze(STUDIO_STORE.templates.map((t) => Object.freeze({ ...t }))),
+    );
+  }
+
+  createStudioDraftFromTemplate(
+    templateId: string,
+    language: string,
+    cefrLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2",
+  ): Promise<CreateStudioDraftOutcome> {
+    const tpl = STUDIO_STORE.templates.find((t) => t.template_id === templateId);
+    if (!tpl) {
+      return Promise.resolve({
+        status: "structure_invalid",
+        message: "没有找到这个模板，请刷新后重试，或直接粘贴内容",
+      });
+    }
+    return this.createStudioDraft({
+      text: tpl.prefilled_text,
+      title: tpl.title_suggestion,
+      language,
+      cefrLevel: cefrLevel ?? tpl.cefr_suggestion,
+    });
+  }
+
+  #expertEditable(draftId: string): { ok: true; draft: MockStudioDraft } | { ok: false; outcome: ExpertEditStudioOutcome } {
+    const draft = this.#ownedDraft(draftId);
+    if (!draft) {
+      return { ok: false, outcome: { status: "not_found", message: "草稿不存在" } };
+    }
+    if (draft.status === "published" || draft.status === "discarded") {
+      return {
+        ok: false,
+        outcome: {
+          status: "state_invalid",
+          message: `草稿已${draft.status === "published" ? "发布" : "废弃"}，不能继续编辑；如需修改请发起修订`,
+        },
+      };
+    }
+    return { ok: true, draft };
+  }
+
+  /** 训练模式定义守卫（Mock 复刻 parseTrainingModes 核心规则，教学化错误）。 */
+  #validateTrainingModes(payload: unknown): string | null {
+    if (typeof payload !== "object" || payload === null) return "训练模式定义不是有效对象";
+    const modes = (payload as { modes?: unknown }).modes;
+    if (!Array.isArray(modes) || modes.length === 0 || modes.length > 20) {
+      return "训练模式列表必须包含 1–20 个模式";
+    }
+    for (const [i, raw] of modes.entries()) {
+      if (typeof raw !== "object" || raw === null) return `第 ${i + 1} 个训练模式不是有效对象`;
+      const m = raw as { mode_ref?: unknown; claim_suffix?: unknown; steps?: unknown };
+      if (typeof m.mode_ref !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(m.mode_ref)) {
+        return `第 ${i + 1} 个训练模式的名称（mode_ref）无效`;
+      }
+      if (typeof m.claim_suffix !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(m.claim_suffix)) {
+        return `训练模式 ${m.mode_ref} 缺少有效的教学主张标识（claim_suffix）`;
+      }
+      const steps = m.steps;
+      if (!Array.isArray(steps) || steps.length < 3 || steps.length > 10) {
+        return `训练模式 ${m.mode_ref} 的步骤序列必须包含 3–10 步`;
+      }
+      const kinds = steps.map((s) => (typeof s === "object" && s !== null ? (s as { primitive?: unknown }).primitive : undefined));
+      if (kinds[0] !== "present") return `训练模式 ${m.mode_ref} 的第一步必须是向学员展示内容（present）`;
+      if (kinds[kinds.length - 1] !== "schedule") return `训练模式 ${m.mode_ref} 的最后一步必须是安排复习（schedule）`;
+      const captures = kinds.filter((k) => k === "capture_text" || k === "capture_audio" || k === "capture_choice");
+      if (captures.length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个学员作答步骤`;
+      const capIdx = kinds.indexOf(captures[0]);
+      if (kinds[capIdx + 1] !== "evaluate") return `训练模式 ${m.mode_ref} 的作答步骤之后必须紧跟评估（evaluate）`;
+      if (kinds.filter((k) => k === "evaluate").length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个评估步骤`;
+      if (kinds.filter((k) => k === "feedback").length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个反馈步骤`;
+    }
+    return null;
+  }
+
+  editTrainingModes(draftId: string, modesJson: string): Promise<ExpertEditStudioOutcome> {
+    const editable = this.#expertEditable(draftId);
+    if (!editable.ok) return Promise.resolve(editable.outcome);
+    const draft = editable.draft;
+    let payload: unknown;
+    try {
+      payload = JSON.parse(modesJson);
+    } catch {
+      return Promise.resolve({
+        status: "invalid_json",
+        message: "训练模式定义不是有效的 JSON，请检查括号、引号与逗号",
+      });
+    }
+    const invalid = this.#validateTrainingModes(payload);
+    if (invalid) {
+      return Promise.resolve({
+        status: "invalid_content",
+        message: `训练模式定义无法使用：${invalid}`,
+      });
+    }
+    // claim 必须由清单声明（Mock 对齐 buildManifestDraft 的三 claims 后缀）。
+    const declared = new Set([
+      "checkin_dialogue",
+      "verb_valence_dative",
+      "polite_request_construction",
+    ]);
+    const parsedModes = (payload as { modes: { mode_ref: string; claim_suffix: string }[] }).modes;
+    for (const raw of parsedModes) {
+      if (!declared.has(raw.claim_suffix)) {
+        return Promise.resolve({
+          status: "invalid_content",
+          message: `训练模式 ${raw.mode_ref} 的教学主张不在本课程清单中，无法使用`,
+        });
+      }
+    }
+    draft.training_modes_json = modesJson;
+    draft.expert_edited = true;
+    draft.status = "structured";
+    draft.updated_at = "2026-08-16T12:15:00Z";
+    return Promise.resolve({ status: "saved", draft: draftView(draft) });
+  }
+
+  editManifest(draftId: string, manifestJson: string): Promise<ExpertEditStudioOutcome> {
+    const editable = this.#expertEditable(draftId);
+    if (!editable.ok) return Promise.resolve(editable.outcome);
+    const draft = editable.draft;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(manifestJson);
+    } catch {
+      return Promise.resolve({
+        status: "invalid_json",
+        message: "课程清单不是有效的 JSON，请检查括号、引号与逗号",
+      });
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      return Promise.resolve({ status: "invalid_content", message: "课程清单无法使用，请检查内容" });
+    }
+    const manifest = parsed as {
+      dlc_id?: unknown;
+      display_name?: unknown;
+      claims?: unknown;
+      passes?: unknown;
+      schema_version?: unknown;
+      language?: unknown;
+    };
+    if (typeof manifest.dlc_id !== "string" || manifest.dlc_id !== draft.dlc_id) {
+      return Promise.resolve({
+        status: "invalid_content",
+        message: "课程标识（dlc_id）不能修改或缺失",
+      });
+    }
+    if (typeof manifest.display_name !== "string" || manifest.display_name.trim().length === 0) {
+      return Promise.resolve({ status: "invalid_content", message: "课程名称不能为空" });
+    }
+    if (!Array.isArray(manifest.claims) || manifest.claims.length === 0) {
+      return Promise.resolve({
+        status: "invalid_content",
+        message: "课程必须声明至少一个教学主张（claims）",
+      });
+    }
+    if (!Array.isArray(manifest.passes) || manifest.passes.length === 0) {
+      return Promise.resolve({
+        status: "invalid_content",
+        message: "课程必须保留至少一个编译管线（passes）",
+      });
+    }
+    // 专家编辑后锁定向导；训练模式定义保留；manifest 快照更新。
+    draft.expert_edited = true;
+    draft.status = "structured";
+    draft.title = manifest.display_name.trim();
+    draft.manifest = {
+      schema_version: typeof manifest.schema_version === "string" ? manifest.schema_version : "0.2.0",
+      dlc_id: manifest.dlc_id,
+      display_name: manifest.display_name,
+      language: typeof manifest.language === "string" ? manifest.language : draft.language,
+      claims: (manifest.claims as MockManifest["claims"]),
+      passes: (manifest.passes as MockManifest["passes"]),
+    };
+    draft.updated_at = "2026-08-16T12:18:00Z";
+    return Promise.resolve({ status: "saved", draft: draftView(draft) });
   }
 
   // -------------------------------------------------------------------------

@@ -12,7 +12,8 @@
     "demo:loop": "node scripts/demo-loop.mjs",
     "e2e:p4": "node scripts/e2e-p4.mjs",
     "e2e:p5": "node scripts/e2e-p5.mjs",
-    "e2e:p6": "node scripts/e2e-p6.mjs"
+    "e2e:p6": "node scripts/e2e-p6.mjs",
+    "e2e:p7": "node scripts/e2e-p7.mjs"
   },
   "packageManager": "pnpm@11.21.0",
   "engines": {

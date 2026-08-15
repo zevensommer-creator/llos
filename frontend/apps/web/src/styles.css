@@ -1096,3 +1096,94 @@ T-032: Studio 创作向导（product_spec §6）：左侧 BYOK/我的课程，�
 .studio-ack input {
   margin-top: 3px;
 }
+
+/* T-035 Studio v2：模板加速器 + 专家模式 */
+.studio-template-panel {
+  margin-bottom: var(--llos-space-md);
+}
+
+.studio-templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--llos-space-sm);
+  margin-top: var(--llos-space-sm);
+}
+
+.studio-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: var(--llos-space-sm);
+  border: 1px solid var(--llos-color-border);
+  border-radius: var(--llos-radius-md);
+  background: var(--llos-color-surface);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.studio-template-card:hover {
+  border-color: var(--llos-color-accent);
+}
+
+.studio-template-card--active {
+  border-color: var(--llos-color-accent);
+  box-shadow: 0 0 0 1px var(--llos-color-accent);
+}
+
+.studio-template-title {
+  font-weight: 600;
+}
+
+.studio-template-meta {
+  color: var(--llos-color-ink-secondary);
+  font-size: var(--llos-font-size-sm);
+}
+
+.studio-textarea--code {
+  font-family: var(--llos-font-mono, ui-monospace, "Cascadia Code", Consolas, monospace);
+  font-size: 12px;
+  white-space: pre;
+}
+
+.studio-expert-toggle {
+  display: flex;
+  gap: var(--llos-space-xs);
+  margin-bottom: var(--llos-space-sm);
+  border-bottom: 1px solid var(--llos-color-border);
+  padding-bottom: var(--llos-space-xs);
+}
+
+.studio-expert-tab {
+  appearance: none;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--llos-color-ink-secondary);
+  padding: var(--llos-space-xs) var(--llos-space-sm);
+  border-radius: var(--llos-radius-sm);
+  cursor: pointer;
+}
+
+.studio-expert-tab:hover:not(:disabled) {
+  color: var(--llos-color-ink);
+}
+
+.studio-expert-tab--active {
+  color: var(--llos-color-accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--llos-color-accent) 10%, transparent);
+}
+
+.studio-expert-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.studio-expert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--llos-space-sm);
+}

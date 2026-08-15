@@ -424,6 +424,14 @@ export interface StudioDraftView {
   cefr_level: string;
   units: readonly StudioUnitView[];
   structured_by: { provider_id: string; model_id?: string };
+  /** PNG 摄入时记录 OCR 所用 provider（格式解析步骤溯源）。 */
+  ocr_by?: { provider_id: string; model_id?: string };
+  /** 专家模式：manifest 或训练模式被直接编辑过；向导编辑随之锁定。 */
+  expert_edited?: boolean;
+  /** 完整清单 JSON（专家模式 manifest 编辑器的基线；草稿视图的只读快照）。 */
+  manifest_json?: string;
+  /** 训练模式定义 JSON（专家模式编辑器基线；修订草稿继承发布时定义）。 */
+  training_modes_json?: string;
   updated_at: string;
 }
 
@@ -459,11 +467,32 @@ export interface ByokEntryView {
 }
 
 export interface CreateStudioDraftInput {
-  text: string;
+  /** 文本摄入（粘贴内容）；与 image 二选一。 */
+  text?: string;
+  /** PNG 图片摄入（base64 传输）：服务端经 OCR 提取文字后复用 structure 管线。 */
+  image?: { media_type?: string; base64: string };
   title: string;
   language: string;
   cefrLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
 }
+
+/** 模板加速器条目（§6.2 可选起点：一键预填向导，不携带教学策略）。 */
+export interface StudioTemplateView {
+  template_id: string;
+  title: string;
+  description: string;
+  cefr_suggestion: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+  title_suggestion: string;
+  prefilled_text: string;
+}
+
+/** 专家模式编辑结果（训练模式 / manifest 直接编辑；门禁教学化）。 */
+export type ExpertEditStudioOutcome =
+  | { status: "saved"; draft: StudioDraftView }
+  | { status: "invalid_json"; message: string }
+  | { status: "invalid_content"; message: string }
+  | { status: "state_invalid"; message: string }
+  | { status: "not_found"; message: string };
 
 export type CreateStudioDraftOutcome =
   | { status: "created"; draft: StudioDraftView }
@@ -555,4 +584,10 @@ export interface ApiClient {
   publishStudioDraft(draftId: string, input: PublishStudioInput): Promise<PublishStudioOutcome>;
   startRevision(dlcId: string): Promise<CreateStudioDraftOutcome>;
   delistStudioDlc(dlcId: string): Promise<DelistStudioOutcome>;
+
+  /** T-035 Studio v2：模板加速器 + PNG 摄入 + 专家模式编辑。 */
+  listStudioTemplates(): Promise<readonly StudioTemplateView[]>;
+  createStudioDraftFromTemplate(templateId: string, language: string, cefrLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2"): Promise<CreateStudioDraftOutcome>;
+  editTrainingModes(draftId: string, modesJson: string): Promise<ExpertEditStudioOutcome>;
+  editManifest(draftId: string, manifestJson: string): Promise<ExpertEditStudioOutcome>;
 }
