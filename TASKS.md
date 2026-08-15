@@ -43,8 +43,8 @@
 | T-019 | P2b：训练执行引擎 + FSRS 调度器 | done | trae | 高 | T-018 | 已合并 main（82e3c35 + b7d03b0）；core/src/runtime SessionExecutor（12 原语闭集、注册表事件产出、branch 条件路由、迭代/时长硬上限→typed abort、能力失败降级、$complete/$stop 终止符）+ core/src/scheduler FSRS（ts-fsrs 5.4，事件流重放重建 Card，低置信观察过滤）；25 新测试；.gitattributes 强制 LF（修复 T-018 golden 跨平台行尾缺陷）；全 workspace 141 测试绿；锁已释放。follow-up：SM-2 冷启动回退、branch 事实集扩展 |
 | T-020 | P2c：掌握判定引擎 + 学习曲线/薄弱点/难度投影 + CLI 完整循环 | done | trae | 高 | T-019 | 已合并 main（8d9cd51 + 6d3db5f）；core/src/policy/mastery（Evidence Policy 确定性解释器，五态判定 not_yet/provisional/learned/uncertain/lapsed + reason codes + supersedes 链 + 保留期延迟成功检测）+ 三投影（curve 按天分桶/weak-spots 可解释排序含逾期复习/difficulty tier）+ scripts/demo-loop.mjs（`pnpm demo:loop`：编译→两轮执行→判定→投影→FSRS，37 事件闭环）；24 新测试（mastery 12 + projections 12）；全 workspace 161 测试 + typecheck 绿；锁已释放 |
 | T-021 | P3a：发音证据管线骨架 + 质量门/弃权协议 | done | trae | 高 | T-020 | 已合并 main（93ac11e + 7fbde44）；@llos/speech 端口化管线（AudioAnalyzer/VAD/ASR/G2P/Aligner + Fake 引擎零推理成本）；德语画像 de-DE 0.1.0（Stage 0 保守阈值：SNR≥15/完整性≥0.8/对齐覆盖≥0.9）+ G2P 词典 25 词 + 规则回退（ich/ach 分辨、词尾清化、长短元音启发，全部标 uncertain）；PronunciationAssessment 全路径契约组装（45 测试：弃权矩阵 §8.3 ×9 + 质量门 ×10 + G2P ×10 + 匹配 ×7 + 编排确定性/不误拒 ×9）；后端 5 包 200 测试 + typecheck 绿；锁已释放。声学重引擎适配器留后续 |
-| T-022 | P3b：GOP/韵律证据 + 德语校准器 + 四专项诊断 | review | trae | 高 | T-021 | 待 review（5467542，14 文件 +1924 行）：GopPort/ProsodyPort（Praat 形状：元音时长/F1F2/F0/强度/发音速率）+ Fake 引擎扩展；共享音素表 phones.ts（长短元音类别/前后圆唇对照/清浊尾映射/Stage 0 参考）；四专项诊断（vowel_quantity/front_rounded_vowel/ich_ach_laut/final_devoicing）+ 通用替换回退，全部带 feedback_key 与教学优先级；可接受变体层（r 实现互通/词首 China ch/词尾 -ig→k/-er→ɐ）；证据融合方向敏感：GOP 指控替换+声学支持标准音→evidence_conflict 弃权，双通道一致→confirmed，单通道→suspected，低 GOP/对齐置信→弃权；德语校准器三维度（phoneme_accuracy/vowel_quantity/vowel_quality，维度级弃权保留）；27 新测试（四专项 ×双证/单证/冲突/变体矩阵 + FCR ≤5% 标注语料门）；全 workspace 8 包 250 测试 + typecheck 绿 |
-| T-023 | P3c：发音证据入 Core 闭环 + Piper TTS Provider | todo | — | 高 | T-022 | PronunciationAssessment → LearningObservation → 学习事件桥接；gateway 注册 Piper TTS Provider（仅示范朗读）；指标 harness（对齐成功率/弃权率/误纠正率 vs 基线 §13.2 门槛） |
+| T-022 | P3b：GOP/韵律证据 + 德语校准器 + 四专项诊断 | done | trae | 高 | T-021 | 已合并 main（5467542 + 3d513ee，fast-forward）；GopPort/ProsodyPort（Praat 形状：元音时长/F1F2/F0/强度/发音速率）+ Fake 引擎扩展；共享音素表 phones.ts（长短元音类别/前后圆唇对照/清浊尾映射/Stage 0 参考）；四专项诊断（vowel_quantity/front_rounded_vowel/ich_ach_laut/final_devoicing）+ 通用替换回退，全部带 feedback_key 与教学优先级；可接受变体层（r 实现互通/词首 China ch/词尾 -ig→k/-er→ɐ）；证据融合方向敏感（GOP 指控+声学支持标准音→弃权；双证一致→confirmed；单证→suspected；低置信→弃权）；德语校准器三维度（维度级弃权保留）；27 新测试（FCR ≤5% 标注语料门）；全 workspace 8 包 250 测试 + typecheck 绿；锁已释放。遗留 follow-up：阈值待真实声学数据校准（Stage 0 保守值） |
+| T-023 | P3c：发音证据入 Core 闭环 + Piper TTS Provider | doing | trae | 高 | T-022 | PronunciationAssessment → LearningObservation → 学习事件桥接；gateway 注册 Piper TTS Provider（仅示范朗读）；指标 harness（对齐成功率/弃权率/误纠正率 vs 基线 §13.2 门槛） |
 
 ---
 
@@ -107,6 +107,8 @@
 | 2026-08-16 | TRAE | T-022 认领（P3b GOP/韵律 + 校准器 + 四专项诊断）→ doing；分支 feature/trae-speech-gop；范围 speech/（GOP/Prosody 端口 + 校准器 + 诊断 + 可接受变体层 + FCR 测试）；核心控制：issue 需双证据一致（GOP + 独立声学），单证据只 suspected，低置信弃权 |
 | 2026-08-16 | TRAE | 事故记录：工作区 `.git` 目录被清空（原因不明，疑似沙箱/同步软件误删），本地仓库元数据丢失；工作树完好。经非破坏性恢复（init + fetch origin + reset origin/main），全部已推送历史无丢失（远程 main ba9951b 含 T-021 收尾）；T-022 分支重建后照常提交 |
 | 2026-08-16 | TRAE | T-022 完成 → review（5467542）：GOP/韵律端口 + 四专项诊断 + 可接受变体层 + 校准器（27 新测试，FCR ≤5% 门）；证据融合方向敏感（GOP 指控+声学背书→弃权；双证一致→confirmed；单证→suspected）；全 workspace 8 包 250 测试 + typecheck 绿；待 Human 确认合并 feature/trae-speech-gop |
+| 2026-08-16 | Human | 确认 T-022 合并：feature/trae-speech-gop → main（5467542 + 3d513ee，fast-forward）；T-022 置 done，锁已释放；T-023 开工 |
+| 2026-08-16 | TRAE | T-023 认领（P3c 发音证据入 Core 闭环 + Piper TTS Provider）→ doing；分支 feature/trae-speech-core-loop；范围 core/src/（发音观察桥接）+ gateway/src/（Piper descriptor + 示范朗读 adapter）+ scripts/（指标 harness）；桥接层原则：speech 输出证据，Core 确定性转换，维度弃权→低置信观察，不伪造测量置信度 |
 
 ---
 
