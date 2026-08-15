@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "generate": "node scripts/generate.mjs",
-    "build": "pnpm run generate && tsc -p tsconfig.json",
+    "build": "node scripts/generate.mjs && tsc -p tsconfig.json",
     "test": "node --test \"test/*.test.js\""
   },
   "dependencies": {

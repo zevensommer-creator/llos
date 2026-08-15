@@ -6,8 +6,10 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
     "contracts:generate": "pnpm --filter @llos/contracts generate"
   },
+  "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=20"
   }

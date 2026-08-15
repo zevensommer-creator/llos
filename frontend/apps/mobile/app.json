@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "LLOS",
+    "slug": "llos-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "llos",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "org.llos.mobile"
+    },
+    "plugins": ["expo-router"]
+  }
+}

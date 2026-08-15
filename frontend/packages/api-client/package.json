@@ -1,0 +1,16 @@
+{
+  "name": "@llos/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLOS API client surface: the only network boundary for apps (pages must not scatter fetch calls); Mock adapter until UI-4 wires real contracts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test \"test/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

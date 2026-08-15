@@ -1,0 +1,19 @@
+{
+  "name": "@llos/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLOS design tokens: tokens.json single source, generates RN (CJS) and CSS custom properties",
+  "main": "dist/tokens.js",
+  "types": "dist/tokens.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs && node --test \"test/*.test.js\""
+  }
+}
