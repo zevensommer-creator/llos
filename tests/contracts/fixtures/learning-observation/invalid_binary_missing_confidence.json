@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.2.0",
+  "observation_id": "obs_000003",
+  "learner_ref": "learner_alice",
+  "session_ref": "sess_20260815_0002",
+  "activity_ref": "act_match_0043",
+  "claim_ref": "dlc_fsi_german_a1:claim/vocab_haus",
+  "material_snapshot_ref": {
+    "id": "snap_000123",
+    "version": "1.0.0",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "evidence_group_id": "eg_20260815_0009",
+  "assistance": {
+    "hint_count": 0,
+    "retry_count": 0,
+    "answer_revealed": false,
+    "assistance_level": "none"
+  },
+  "evaluator": {
+    "id": "eval_rule_match",
+    "version": "1.0.0",
+    "kind": "rule"
+  },
+  "observed_at": "2026-08-15T10:12:00+08:00",
+  "result_kind": "binary",
+  "outcome": "success"
+}

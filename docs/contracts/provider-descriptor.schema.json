@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:provider-descriptor:0.1.0",
+  "$id": "urn:language-learning-platform:schema:provider-descriptor:0.2.0",
   "title": "Provider Descriptor",
-  "description": "Capability, execution, cost, privacy and operational descriptor for a replaceable model or language service provider. Secrets are never stored in this object.",
+  "description": "Capability, execution, cost, privacy and operational descriptor for a replaceable model or language service provider. Secrets are never stored in this object. v0.2.0: extensions use ExtensionEnvelope (spec §4.4).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -21,7 +21,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "provider_id": {
       "$ref": "#/$defs/Identifier"
@@ -104,7 +104,45 @@
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
       },
-      "additionalProperties": true
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
     },
     "ArtifactRef": {
       "type": "object",
@@ -629,7 +667,7 @@
   },
   "examples": [
     {
-      "schema_version": "0.1.0",
+      "schema_version": "0.2.0",
       "provider_id": "provider.asr.faster-whisper-cpu",
       "version": "0.1.0",
       "display_name": "Local faster-whisper CPU",

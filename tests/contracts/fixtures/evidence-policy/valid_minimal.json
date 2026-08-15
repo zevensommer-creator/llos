@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.2.0",
+  "policy_ref": "dlc_fsi_german_a1:policy/core_vocab",
+  "version": "1.0.0",
+  "dlc_ref": {
+    "id": "dlc_fsi_german_a1",
+    "version": "1.0.0",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "compatible_claims": {
+    "refs": [
+      "dlc_fsi_german_a1:claim/vocab_haus",
+      "dlc_fsi_german_a1:claim/pron_ich_laut"
+    ]
+  },
+  "accepted_observations": ["binary"],
+  "gates": {
+    "minimum_performance": 0.8,
+    "minimum_measurement_confidence": 0.7
+  },
+  "independence": {
+    "hinted_counts_as_assisted": true,
+    "retry_after_answer_reveal_independent": false,
+    "paraphrase_of_same_material_independent": false
+  },
+  "session_requirements": {
+    "minimum_distinct_sessions": 2,
+    "minimum_independent_successes": 3,
+    "minimum_delayed_successes": 1,
+    "minimum_delay": "PT24H"
+  },
+  "abstention_handling": "count_as_insufficient",
+  "conflict_rules": {
+    "high_confidence_failure_threshold": 0.8,
+    "high_confidence_failures_before_lapse": 2,
+    "lapse_requires_distinct_sessions": true,
+    "staleness_window": "P90D"
+  },
+  "projector": {
+    "kind": "rule_based",
+    "version": "1.0.0"
+  },
+  "replay_rule_on_upgrade": "parallel_new_projection"
+}

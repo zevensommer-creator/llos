@@ -1,0 +1,534 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:learning-observation:0.2.0",
+  "title": "Learning Observation",
+  "description": "Typed performance observation produced by an evaluator. performance and measurement_confidence are strictly separated; abstention is explicit (spec §4.4, §5.2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "learner_ref",
+    "session_ref",
+    "activity_ref",
+    "claim_ref",
+    "material_snapshot_ref",
+    "evidence_group_id",
+    "assistance",
+    "evaluator",
+    "observed_at",
+    "result_kind"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "observation_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "learner_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "session_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "activity_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "claim_ref": {
+      "$ref": "#/$defs/ClaimRef"
+    },
+    "material_snapshot_ref": {
+      "$ref": "#/$defs/VersionedRef"
+    },
+    "evidence_group_id": {
+      "$ref": "#/$defs/Identifier",
+      "description": "Observations produced from the same response share one group; Core dedupes independent-evidence counts by group."
+    },
+    "task_variant_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "response_ref": {
+      "$ref": "#/$defs/ArtifactRef",
+      "description": "Raw response (text/audio) as artifact reference, never inline."
+    },
+    "context_features": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/TypedValue"
+      }
+    },
+    "assistance": {
+      "$ref": "#/$defs/Assistance"
+    },
+    "evaluator": {
+      "$ref": "#/$defs/Evaluator"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result_kind": {
+      "enum": [
+        "binary",
+        "scalar",
+        "rubric_vector",
+        "timed",
+        "artifact_evidence",
+        "abstention"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "success",
+        "failure"
+      ]
+    },
+    "metric_ref": {
+      "$ref": "#/$defs/MetricRef"
+    },
+    "value": {
+      "type": "number",
+      "description": "Performance value; meaning declared by the DLC, not Core."
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/RubricDimension"
+      }
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidence_artifact_ref": {
+      "$ref": "#/$defs/ArtifactRef"
+    },
+    "abstention_reason": {
+      "enum": [
+        "audio_quality_low",
+        "alignment_failed",
+        "reference_mismatch_too_large",
+        "scorer_conflict",
+        "oov_or_g2p_uncertain",
+        "uncalibrated_domain",
+        "evaluator_uncertain",
+        "insufficient_evidence"
+      ]
+    },
+    "measurement_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Evaluator certainty about the measurement. Never interchangeable with performance."
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "result_kind",
+        "outcome",
+        "measurement_confidence"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "binary"
+        }
+      }
+    },
+    {
+      "required": [
+        "result_kind",
+        "metric_ref",
+        "value",
+        "measurement_confidence"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "scalar"
+        }
+      }
+    },
+    {
+      "required": [
+        "result_kind",
+        "metric_ref",
+        "dimensions",
+        "measurement_confidence"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "rubric_vector"
+        }
+      }
+    },
+    {
+      "required": [
+        "result_kind",
+        "metric_ref",
+        "value",
+        "latency_ms",
+        "measurement_confidence"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "timed"
+        }
+      }
+    },
+    {
+      "required": [
+        "result_kind",
+        "evidence_artifact_ref",
+        "measurement_confidence"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "artifact_evidence"
+        }
+      }
+    },
+    {
+      "required": [
+        "result_kind",
+        "abstention_reason"
+      ],
+      "properties": {
+        "result_kind": {
+          "const": "abstention"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "MetricRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:metric/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "VersionedRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "origin": {
+          "enum": [
+            "stored",
+            "uploaded",
+            "generated_random",
+            "generated_instructed",
+            "derived"
+          ]
+        }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        }
+      }
+    },
+    "TypedValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "int"
+            },
+            "value": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "float"
+            },
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "bool"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "ref"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "artifact_ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "artifact"
+            },
+            "artifact_ref": {
+              "$ref": "#/$defs/ArtifactRef"
+            }
+          }
+        }
+      ]
+    },
+    "Assistance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hint_count",
+        "retry_count",
+        "answer_revealed",
+        "assistance_level"
+      ],
+      "properties": {
+        "hint_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "answer_revealed": {
+          "type": "boolean"
+        },
+        "assistance_level": {
+          "enum": [
+            "none",
+            "hint",
+            "strong_hint",
+            "answer_revealed"
+          ]
+        }
+      }
+    },
+    "Evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "kind": {
+          "enum": [
+            "rule",
+            "model",
+            "human"
+          ]
+        }
+      }
+    },
+    "RubricDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension_ref",
+        "value"
+      ],
+      "properties": {
+        "dimension_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "value": {
+          "type": "number"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evaluator_run_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seed": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

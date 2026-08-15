@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.2.0",
+  "event_id": "evt_000001",
+  "event_type": "learning.session_started",
+  "sequence_no": 1,
+  "occurred_at": "2026-08-15T10:05:01+08:00",
+  "learner_ref": "learner_alice",
+  "session_ref": "sess_20260815_0002",
+  "mode": "learning",
+  "composition": {
+    "core_version": "0.2.0",
+    "dlc_ref": {
+      "id": "dlc_fsi_german_a1",
+      "version": "1.0.0",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "material_snapshot_ref": {
+      "id": "snap_000123",
+      "version": "1.0.0",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    "learning_ir_ref": {
+      "id": "ir_20260815_0002",
+      "version": "1.0.0",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  "idempotency_key": "idem_evt_000001"
+}

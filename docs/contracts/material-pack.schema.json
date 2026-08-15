@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:material-pack:0.1.0",
+  "$id": "urn:language-learning-platform:schema:material-pack:0.2.0",
   "title": "Material Pack",
-  "description": "Versioned, licensable material layer consumed by DLC compilers. It contains source media and semantic facts, not a fixed teaching method.",
+  "description": "Versioned, licensable material layer consumed by DLC compilers. v0.2.0: CEFR levels and registers become optional DLC/extension-declared references instead of universal Core truth; all annotation values use TypedValue; extensions use ExtensionEnvelope; generation lifecycle recorded (spec §2.7, §4.1).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,6 @@
     "display_name",
     "pack_kind",
     "languages",
-    "target_levels",
     "compatibility",
     "semantic_frames",
     "assets",
@@ -22,7 +21,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "pack_id": {
       "$ref": "#/$defs/Identifier"
@@ -58,30 +57,39 @@
         "$ref": "#/$defs/LanguageTag"
       }
     },
-    "target_levels": {
+    "level_refs": {
       "type": "array",
-      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scale_ref",
+          "level_ref",
+          "version"
+        ],
+        "properties": {
+          "scale_ref": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "level_ref": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "version": {
+            "$ref": "#/$defs/SemVer"
+          }
+        }
+      },
+      "description": "Optional versioned level references (e.g. a CEFR scale declared by a DLC or profile). Not a universal Core truth; Core assumes no scale exists (spec §4.2)."
+    },
+    "register_tags": {
+      "type": "array",
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^(pre-)?[ABC][12](?:\\+)?$"
-      }
-    },
-    "registers": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "intimate",
-          "informal",
-          "neutral",
-          "formal",
-          "academic",
-          "professional",
-          "bureaucratic",
-          "literary"
-        ]
-      }
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "description": "Free-form register tags. v0.1 fixed register enum (intimate/informal/neutral/formal/...) is abolished as Core truth; DLC profiles may declare their own vocabulary."
     },
     "compatibility": {
       "type": "object",
@@ -105,6 +113,16 @@
           }
         }
       }
+    },
+    "lifecycle": {
+      "enum": [
+        "ephemeral",
+        "private_saved",
+        "published",
+        "withdrawn"
+      ],
+      "default": "published",
+      "description": "Generation lifecycle (spec §2.7). Saving a private asset or publishing requires verified creator capability; ephemeral generation is available to ordinary learners at runtime."
     },
     "semantic_frames": {
       "type": "array",
@@ -154,6 +172,10 @@
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
     },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "VersionRange": {
       "type": "string",
       "minLength": 1,
@@ -164,25 +186,125 @@
       "type": "string",
       "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
     },
+    "TypedValue": {
+      "description": "Discriminated union for annotation and fact values. Arbitrary JSON is forbidden (spec §4.4).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "string"],
+          "properties": {
+            "kind": { "const": "string" },
+            "string": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "int"],
+          "properties": {
+            "kind": { "const": "int" },
+            "int": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "float"],
+          "properties": {
+            "kind": { "const": "float" },
+            "float": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bool"],
+          "properties": {
+            "kind": { "const": "bool" },
+            "bool": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "ref"],
+          "properties": {
+            "kind": { "const": "ref" },
+            "ref": { "$ref": "#/$defs/Identifier" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "typed_list"],
+          "properties": {
+            "kind": { "const": "typed_list" },
+            "typed_list": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/TypedValue" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "artifact_ref"],
+          "properties": {
+            "kind": { "const": "artifact_ref" },
+            "artifact_ref": { "$ref": "#/$defs/ArtifactRef" }
+          },
+          "description": "Complex values only as schema-validated artifact references, never inline arbitrary JSON."
+        }
+      ]
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "sha256"],
+      "properties": {
+        "uri": { "type": "string", "format": "uri" },
+        "sha256": { "$ref": "#/$defs/Sha256" },
+        "media_type": { "type": "string", "minLength": 1 },
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" }
+      }
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "schema_version", "payload_ref"],
+      "properties": {
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri", "sha256"],
+          "properties": {
+            "uri": { "type": "string", "format": "uri" },
+            "sha256": { "$ref": "#/$defs/Sha256" }
+          }
+        }
+      }
+    },
     "Extensions": {
       "type": "object",
       "default": {},
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
       },
-      "additionalProperties": true
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version; unregistered extensions or hash mismatches are rejected (spec §4.4)."
     },
     "LocalizedText": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "language",
-        "text"
-      ],
+      "required": ["language", "text"],
       "properties": {
-        "language": {
-          "$ref": "#/$defs/LanguageTag"
-        },
+        "language": { "$ref": "#/$defs/LanguageTag" },
         "text": {
           "type": "string",
           "minLength": 1,
@@ -193,64 +315,35 @@
     "SemanticFrame": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "frame_type",
-        "communicative_intents",
-        "participants",
-        "facts"
-      ],
+      "required": ["id", "frame_type", "communicative_intents", "participants", "facts"],
       "properties": {
-        "id": {
-          "$ref": "#/$defs/Identifier"
-        },
+        "id": { "$ref": "#/$defs/Identifier" },
         "frame_type": {
-          "enum": [
-            "scenario",
-            "event",
-            "concept",
-            "argument_structure",
-            "discourse"
-          ]
+          "enum": ["scenario", "event", "concept", "argument_structure", "discourse"]
         },
         "titles": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/LocalizedText"
-          }
+          "items": { "$ref": "#/$defs/LocalizedText" }
         },
         "communicative_intents": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/Identifier"
-          }
+          "items": { "$ref": "#/$defs/Identifier" }
         },
         "participants": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "role"
-            ],
+            "required": ["id", "role"],
             "properties": {
-              "id": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "role": {
-                "$ref": "#/$defs/Identifier"
-              },
+              "id": { "$ref": "#/$defs/Identifier" },
+              "role": { "$ref": "#/$defs/Identifier" },
               "attributes": {
                 "type": "object",
                 "additionalProperties": {
-                  "type": [
-                    "string",
-                    "number",
-                    "boolean"
-                  ]
+                  "$ref": "#/$defs/TypedValue"
                 }
               }
             }
@@ -262,23 +355,12 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "subject",
-              "predicate",
-              "object"
-            ],
+            "required": ["subject", "predicate", "object"],
             "properties": {
-              "subject": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "predicate": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "object": {},
-              "immutable": {
-                "type": "boolean",
-                "default": false
-              }
+              "subject": { "$ref": "#/$defs/Identifier" },
+              "predicate": { "$ref": "#/$defs/Identifier" },
+              "object": { "$ref": "#/$defs/TypedValue" },
+              "immutable": { "type": "boolean", "default": false }
             }
           }
         },
@@ -287,27 +369,17 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "language",
-              "lemma"
-            ],
+            "required": ["id", "language", "lemma"],
             "properties": {
-              "id": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "language": {
-                "$ref": "#/$defs/LanguageTag"
-              },
+              "id": { "$ref": "#/$defs/Identifier" },
+              "language": { "$ref": "#/$defs/LanguageTag" },
               "lemma": {
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 200
               },
-              "sense_ref": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "register": {
+              "sense_ref": { "$ref": "#/$defs/Identifier" },
+              "register_tag": {
                 "type": "string",
                 "maxLength": 64
               },
@@ -322,83 +394,38 @@
         "asset_refs": {
           "type": "array",
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/Identifier"
-          }
+          "items": { "$ref": "#/$defs/Identifier" }
         }
       }
     },
     "Asset": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "uri",
-        "media_type",
-        "sha256",
-        "size_bytes",
-        "license"
-      ],
+      "required": ["id", "uri", "media_type", "sha256", "size_bytes", "license"],
       "properties": {
-        "id": {
-          "$ref": "#/$defs/Identifier"
-        },
-        "uri": {
-          "type": "string",
-          "format": "uri"
-        },
+        "id": { "$ref": "#/$defs/Identifier" },
+        "uri": { "type": "string", "format": "uri" },
         "media_type": {
           "type": "string",
           "pattern": "^[a-z0-9.+-]+/[a-zA-Z0-9.+-]+$"
         },
-        "sha256": {
-          "type": "string",
-          "pattern": "^[a-fA-F0-9]{64}$"
-        },
-        "size_bytes": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "language": {
-          "$ref": "#/$defs/LanguageTag"
-        },
-        "duration_ms": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "transcript_asset_ref": {
-          "$ref": "#/$defs/Identifier"
-        },
-        "source_uri": {
-          "type": "string",
-          "format": "uri"
-        },
-        "license": {
-          "$ref": "#/$defs/License"
-        },
-        "generated": {
-          "type": "boolean",
-          "default": false
-        }
+        "sha256": { "$ref": "#/$defs/Sha256" },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "language": { "$ref": "#/$defs/LanguageTag" },
+        "duration_ms": { "type": "integer", "minimum": 1 },
+        "transcript_asset_ref": { "$ref": "#/$defs/Identifier" },
+        "source_uri": { "type": "string", "format": "uri" },
+        "license": { "$ref": "#/$defs/License" },
+        "generated": { "type": "boolean", "default": false }
       }
     },
     "Annotation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "target_ref",
-        "annotation_type",
-        "value",
-        "provenance"
-      ],
+      "required": ["id", "target_ref", "annotation_type", "value", "provenance"],
       "properties": {
-        "id": {
-          "$ref": "#/$defs/Identifier"
-        },
-        "target_ref": {
-          "$ref": "#/$defs/Identifier"
-        },
+        "id": { "$ref": "#/$defs/Identifier" },
+        "target_ref": { "$ref": "#/$defs/Identifier" },
         "annotation_type": {
           "enum": [
             "construction",
@@ -408,80 +435,49 @@
             "pragmatics",
             "difficulty",
             "safety",
-            "license"
-          ]
+            "license",
+            "custom"
+          ],
+          "description": "Material-layer annotation categories. 'custom' requires type_schema_ref so DLC profiles can declare their own vocabulary without corrupting the ABI."
         },
-        "value": {},
+        "type_schema_ref": {
+          "$ref": "#/$defs/Identifier",
+          "description": "Required for annotation_type=custom: the DLC/profile-declared schema identifying the annotation vocabulary."
+        },
+        "value": {
+          "$ref": "#/$defs/TypedValue"
+        },
         "confidence": {
           "type": "number",
           "minimum": 0,
           "maximum": 1
         },
-        "provenance": {
-          "$ref": "#/$defs/AnnotationProvenance"
-        }
+        "provenance": { "$ref": "#/$defs/AnnotationProvenance" }
       }
     },
     "AnnotationProvenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "method",
-        "created_at"
-      ],
+      "required": ["method", "created_at"],
       "properties": {
-        "method": {
-          "enum": [
-            "human",
-            "rule",
-            "model",
-            "imported"
-          ]
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "actor_id": {
-          "$ref": "#/$defs/Identifier"
-        },
-        "provider_id": {
-          "$ref": "#/$defs/Identifier"
-        },
-        "model_version": {
-          "type": "string",
-          "maxLength": 200
-        },
-        "prompt_template_version": {
-          "$ref": "#/$defs/SemVer"
-        },
-        "random_seed": {
-          "type": "integer",
-          "minimum": 0
-        },
+        "method": { "enum": ["human", "rule", "model", "imported"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "actor_id": { "$ref": "#/$defs/Identifier" },
+        "provider_id": { "$ref": "#/$defs/Identifier" },
+        "model_version": { "type": "string", "maxLength": 200 },
+        "prompt_template_version": { "$ref": "#/$defs/SemVer" },
+        "random_seed": { "type": "integer", "minimum": 0 },
         "review_status": {
-          "enum": [
-            "unreviewed",
-            "accepted",
-            "rejected",
-            "needs_revision"
-          ]
+          "enum": ["unreviewed", "accepted", "rejected", "needs_revision"]
         }
       }
     },
     "GenerationPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "allow_generation",
-        "allowed_transformations",
-        "immutable_paths",
-        "human_review_required"
-      ],
+      "required": ["allow_generation", "allowed_transformations", "immutable_paths", "human_review_required"],
       "properties": {
-        "allow_generation": {
-          "type": "boolean"
-        },
+        "allow_generation": { "type": "boolean" },
         "allowed_transformations": {
           "type": "array",
           "uniqueItems": true,
@@ -505,9 +501,7 @@
             "pattern": "^/"
           }
         },
-        "human_review_required": {
-          "type": "boolean"
-        },
+        "human_review_required": { "type": "boolean" },
         "maximum_generated_variants": {
           "type": "integer",
           "minimum": 0,
@@ -522,105 +516,45 @@
         "content_labels": {
           "type": "array",
           "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "maxLength": 80
-          }
+          "items": { "type": "string", "maxLength": 80 }
         },
-        "minimum_age": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 21
-        },
-        "notes": {
-          "type": "string",
-          "maxLength": 2000
-        }
+        "minimum_age": { "type": "integer", "minimum": 0, "maximum": 21 },
+        "notes": { "type": "string", "maxLength": 2000 }
       }
     },
     "License": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "spdx_id",
-        "commercial_use",
-        "derivatives"
-      ],
+      "required": ["spdx_id", "commercial_use", "derivatives"],
       "properties": {
-        "spdx_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100
-        },
-        "license_uri": {
-          "type": "string",
-          "format": "uri"
-        },
-        "commercial_use": {
-          "enum": [
-            "allowed",
-            "restricted",
-            "unknown"
-          ]
-        },
-        "derivatives": {
-          "enum": [
-            "allowed",
-            "share_alike",
-            "prohibited",
-            "unknown"
-          ]
-        },
-        "attribution": {
-          "type": "string",
-          "maxLength": 4000
-        }
+        "spdx_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "license_uri": { "type": "string", "format": "uri" },
+        "commercial_use": { "enum": ["allowed", "restricted", "unknown"] },
+        "derivatives": { "enum": ["allowed", "share_alike", "prohibited", "unknown"] },
+        "attribution": { "type": "string", "maxLength": 4000 }
       }
     },
     "Provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "created_at",
-        "creators",
-        "source_records"
-      ],
+      "required": ["created_at", "creators", "source_records"],
       "properties": {
-        "created_at": {
-          "type": "string",
-          "format": "date-time"
-        },
+        "created_at": { "type": "string", "format": "date-time" },
         "creators": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 300
-          }
+          "items": { "type": "string", "minLength": 1, "maxLength": 300 }
         },
         "source_records": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "source_uri",
-              "retrieved_at"
-            ],
+            "required": ["source_uri", "retrieved_at"],
             "properties": {
-              "source_uri": {
-                "type": "string",
-                "format": "uri"
-              },
-              "retrieved_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "sha256": {
-                "type": "string",
-                "pattern": "^[a-fA-F0-9]{64}$"
-              }
+              "source_uri": { "type": "string", "format": "uri" },
+              "retrieved_at": { "type": "string", "format": "date-time" },
+              "sha256": { "$ref": "#/$defs/Sha256" }
             }
           }
         },
@@ -629,31 +563,13 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "provider_id",
-              "model_version",
-              "template_version",
-              "created_at"
-            ],
+            "required": ["provider_id", "model_version", "template_version", "created_at"],
             "properties": {
-              "provider_id": {
-                "$ref": "#/$defs/Identifier"
-              },
-              "model_version": {
-                "type": "string",
-                "minLength": 1
-              },
-              "template_version": {
-                "$ref": "#/$defs/SemVer"
-              },
-              "random_seed": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "created_at": {
-                "type": "string",
-                "format": "date-time"
-              }
+              "provider_id": { "$ref": "#/$defs/Identifier" },
+              "model_version": { "type": "string", "minLength": 1 },
+              "template_version": { "$ref": "#/$defs/SemVer" },
+              "random_seed": { "type": "integer", "minimum": 0 },
+              "created_at": { "type": "string", "format": "date-time" }
             }
           }
         }
@@ -662,79 +578,53 @@
     "Integrity": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "manifest_sha256"
-      ],
+      "required": ["manifest_sha256"],
       "properties": {
-        "manifest_sha256": {
-          "type": "string",
-          "pattern": "^[a-fA-F0-9]{64}$"
-        },
-        "signature": {
-          "type": "string",
-          "minLength": 1
-        },
-        "key_id": {
-          "$ref": "#/$defs/Identifier"
-        }
+        "manifest_sha256": { "$ref": "#/$defs/Sha256" },
+        "signature": { "type": "string", "minLength": 1 },
+        "key_id": { "$ref": "#/$defs/Identifier" }
       }
     }
   },
   "examples": [
     {
-      "schema_version": "0.1.0",
+      "schema_version": "0.2.0",
       "pack_id": "material.de.hotel-checkin",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "display_name": "Hotel Check-in Scenario",
       "pack_kind": "semantic_scenario",
-      "languages": [
-        "de-DE"
+      "languages": ["de-DE"],
+      "level_refs": [
+        {
+          "scale_ref": "scale.cefr",
+          "level_ref": "A1",
+          "version": "2001.0.0"
+        }
       ],
-      "target_levels": [
-        "A1",
-        "A2"
-      ],
-      "registers": [
-        "formal",
-        "neutral"
-      ],
+      "register_tags": ["formal", "neutral"],
       "compatibility": {
-        "material_schema": ">=0.1.0 <0.2.0",
-        "learning_ir": ">=0.1.0 <0.2.0",
-        "required_dlc_capabilities": [
-          "scenario.dialogue"
-        ]
+        "material_schema": ">=0.2.0 <0.3.0",
+        "learning_ir": ">=0.2.0 <0.3.0",
+        "required_dlc_capabilities": ["scenario.dialogue"]
       },
+      "lifecycle": "published",
       "semantic_frames": [
         {
           "id": "scenario.checkin",
           "frame_type": "scenario",
           "titles": [
-            {
-              "language": "de-DE",
-              "text": "Im Hotel einchecken"
-            }
+            { "language": "de-DE", "text": "Im Hotel einchecken" }
           ],
-          "communicative_intents": [
-            "identify_self",
-            "state_reservation",
-            "request_information"
-          ],
+          "communicative_intents": ["identify_self", "state_reservation", "request_information"],
           "participants": [
-            {
-              "id": "guest",
-              "role": "customer"
-            },
-            {
-              "id": "receptionist",
-              "role": "service_staff"
-            }
+            { "id": "guest", "role": "customer" },
+            { "id": "receptionist", "role": "service_staff" }
           ],
           "facts": [
             {
               "subject": "guest",
               "predicate": "has_reservation",
-              "object": true,
+              "object": { "kind": "bool", "bool": true },
               "immutable": true
             }
           ],
@@ -751,14 +641,8 @@
       "assets": [],
       "generation_policy": {
         "allow_generation": true,
-        "allowed_transformations": [
-          "surface_realization",
-          "dialogue_expansion",
-          "lexical_substitution"
-        ],
-        "immutable_paths": [
-          "/semantic_frames/0/facts/0"
-        ],
+        "allowed_transformations": ["surface_realization", "dialogue_expansion", "lexical_substitution"],
+        "immutable_paths": ["/semantic_frames/0/facts/0"],
         "human_review_required": true,
         "maximum_generated_variants": 20
       },
@@ -769,10 +653,8 @@
         "attribution": "Example scenario created for the language learning platform."
       },
       "provenance": {
-        "created_at": "2026-08-14T12:00:00Z",
-        "creators": [
-          "platform-team"
-        ],
+        "created_at": "2026-08-15T12:00:00Z",
+        "creators": ["platform-team"],
         "source_records": []
       }
     }

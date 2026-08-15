@@ -1,0 +1,461 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:learner-state-projection:0.2.0",
+  "title": "Learner State Projection",
+  "description": "Derived, rebuildable multi-dimensional evidence summary for one learner + claim + evidence policy version. It is a cache computed by the deterministic reducer/projector from the append-only learning event log; it can be deleted and rebuilt, and the same event stream replayed with the same reducer/projector version must reproduce it field-for-field. It is never the source of truth and never a 'mastery score' (spec §5.2, §5.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "projection_id",
+    "learner_ref",
+    "claim_ref",
+    "evidence_policy_ref",
+    "evidence_policy_version",
+    "evidence_state",
+    "evidence_counts",
+    "session_coverage",
+    "independence",
+    "diversity",
+    "evaluator_summary",
+    "reducer",
+    "projected_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "projection_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "learner_ref": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "claim_ref": {
+      "$ref": "#/$defs/ClaimRef"
+    },
+    "evidence_policy_ref": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "evidence_policy_version": {
+      "$ref": "#/$defs/SemVer"
+    },
+    "evidence_state": {
+      "enum": [
+        "no_evidence",
+        "insufficient",
+        "supported",
+        "conflicted",
+        "stale"
+      ],
+      "description": "Core-fixed, theory-neutral evidence state. User-facing wording such as 'mastered' must come from a MasteryDecision, never from this field; DLC may supply UI labels but cannot change the event semantics (spec §5.4)."
+    },
+    "evidence_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valid",
+        "supporting",
+        "contradicting",
+        "abstained"
+      ],
+      "properties": {
+        "valid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supporting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contradicting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "abstained": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Abstentions only increase the 'insufficient evidence' accounting; they never count as support or contradiction."
+        },
+        "below_confidence_gate": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Results below the policy measurement-confidence gate: retained as audit events, excluded from decisions."
+        }
+      }
+    },
+    "session_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distinct_sessions"
+      ],
+      "properties": {
+        "distinct_sessions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_valid_observation_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "span": {
+          "$ref": "#/$defs/Duration"
+        }
+      }
+    },
+    "performance_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "independent_successes",
+        "independent_failures"
+      ],
+      "properties": {
+        "independent_successes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "independent_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metric_ref": {
+          "$ref": "#/$defs/MetricRef"
+        },
+        "metric_mean": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Mean on the DLC-declared normalizable metric; performance, not measurement confidence."
+        }
+      },
+      "description": "Immediate performance summary over valid evidence."
+    },
+    "delayed_retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delayed_successes"
+      ],
+      "properties": {
+        "delayed_successes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Successes occurring after the policy-declared minimum delay since first success."
+        },
+        "delays_used": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Duration"
+          }
+        },
+        "last_delayed_success_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "independence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unassisted",
+        "hinted",
+        "retried",
+        "answer_revealed"
+      ],
+      "properties": {
+        "unassisted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hinted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retried": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "answer_revealed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Breakdown of supporting evidence by assistance level. Evidence independence is deduplicated by evidence_group_id; retries after answer revelation are not independent (spec §5.6)."
+    },
+    "diversity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distinct_material_snapshots",
+        "distinct_tasks"
+      ],
+      "properties": {
+        "distinct_material_snapshots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "distinct_tasks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "distinct_contexts": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "transfer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supporting_evidence"
+      ],
+      "properties": {
+        "supporting_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "distinct_contexts": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Maintained only when the claim asserts transferability and the policy requires context-diversity evidence."
+    },
+    "automaticity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accuracy"
+      ],
+      "properties": {
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mean_latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "intra_individual_variability": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Within-learner variability on the DLC-declared metric."
+        }
+      },
+      "description": "Maintained only when the policy requires automaticity evidence."
+    },
+    "evaluator_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "abstention_count"
+      ],
+      "properties": {
+        "abstention_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evaluators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "version",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "version": {
+                "$ref": "#/$defs/SemVer"
+              },
+              "kind": {
+                "enum": [
+                  "rule",
+                  "model",
+                  "human"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "description": "Evaluator versions and abstention accounting; measurement confidence gates are applied per policy, never mixed with performance."
+    },
+    "conflicts_and_lapses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "high_confidence_contradictions",
+        "lapses"
+      ],
+      "properties": {
+        "high_confidence_contradictions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lapses": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_lapse_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "memory_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_ref",
+        "model_version"
+      ],
+      "properties": {
+        "model_ref": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "model_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "stability": {
+          "type": "number",
+          "minimum": 0
+        },
+        "retrievability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "description": "Optional memory-model state (e.g. FSRS). A memory model may only schedule reviews; it never alone declares learned and never replaces the event fact layer (spec §5.7)."
+    },
+    "reducer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "event_sequence_start",
+        "event_sequence_end",
+        "input_hash"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "event_sequence_start": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event_sequence_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "input_hash": {
+          "$ref": "#/$defs/Sha256"
+        }
+      },
+      "description": "Reducer/projector identity, version, event sequence boundaries and input hash for deterministic replay auditing."
+    },
+    "projected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "ClaimRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:claim/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "PolicyRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:policy/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "MetricRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*:metric/[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Duration": {
+      "type": "string",
+      "pattern": "^P(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?:[0-9]+H)?(?:[0-9]+M)?(?:[0-9]+S)?)?$",
+      "minLength": 2
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

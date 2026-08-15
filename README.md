@@ -18,11 +18,13 @@
 
 | 文档 | 内容 |
 |------|------|
-| [`AGENTS.md`](AGENTS.md) | 唯一权威文件：多 Agent 协作协议 + 编码章程（开始任何工作前必读） |
-| [`docs/LANGUAGE_PLATFORM_SPEC.md`](docs/LANGUAGE_PLATFORM_SPEC.md) | 架构基线 v0.1.2：系统怎么建（ADR、契约、边界） |
-| [`docs/product_spec.md`](docs/product_spec.md) | 产品规格 v0.5：产品卖什么给谁（权限/市场/班级/Studio/训练） |
-| [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | 第一代实施分步计划 P0-P9（编码前最后准备） |
-| [`docs/contracts/`](docs/contracts/) | 六份 schema（v0.1 契约唯一事实来源） |
+| [`AGENTS.md`](AGENTS.md) | 唯一权威文件：多 Agent 协作协议（对等动态认领）+ 编码章程（开始任何工作前必读） |
+| [`docs/LANGUAGE_PLATFORM_SPEC.md`](docs/LANGUAGE_PLATFORM_SPEC.md) | 架构基线 v0.2.0：系统怎么建（架构不变量、ADR、契约、学习闭环） |
+| [`docs/product_spec.md`](docs/product_spec.md) | 产品规格 v0.6：产品卖什么给谁（权限/客户端表面/市场/班级/Studio/训练） |
+| [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | 第一代实施计划 v1.1：P0-P9 三条主线（系统核心/产品层/客户端线 UI-0~UI-6） |
+| [`docs/contracts/`](docs/contracts/) | 15 份 schema（v0.2.0 契约唯一事实来源）+ 学习事件注册表 |
+| [`docs/adr/`](docs/adr/) | 架构决策记录（ADR-CLIENT-SURFACES、ADR-FRONTEND-STACK 等） |
+| [`frontend/docs/`](frontend/docs/) | 客户端表面规格五件套（表面/技术栈/Figma 交付/ViewModel/可访问性） |
 | [`CONVENTIONS.md`](CONVENTIONS.md) | 代码与文档规范 |
 | [`TASKS.md`](TASKS.md) | 任务看板（协作真相源） |
 
@@ -30,7 +32,7 @@
 
 ```
 ├── AGENTS.md / CONVENTIONS.md / TASKS.md / README.md
-├── docs/              # 工程文档 + docs/contracts/（schema 正本）
+├── docs/              # 工程文档 + docs/contracts/（schema 正本）+ docs/adr/（决策记录）
 ├── current_tasks/     # 任务锁目录
 ├── core/              # Core 特权运行时
 ├── compiler/          # DLC 编译
@@ -38,10 +40,10 @@
 ├── speech/            # 发音证据管线
 ├── contracts/         # schema 生成的类型与校验代码
 ├── market/            # DLC 市场（产品层）
-├── frontend/          # 前端界面（产品层）
+├── frontend/          # 前端（产品层；docs/ 内为客户端表面规格）
 ├── materials/         # Material Pack 库
 ├── dlc_reference/     # 参考编译器 + 参考素材样例
-├── tests/             # 测试
+├── tests/             # 测试（tests/contracts/fixtures/ 为契约正反例）
 ├── 导入/              # 外部材料导入暂存区（不进版本库）
 ├── 导出/              # 现行文件的审核/导出副本（不进版本库）
 └── 暂存/              # 历史归档 + 废稿（均有 README 注明）
@@ -49,5 +51,6 @@
 
 ## 当前状态
 
-- 设计阶段完成：架构基线 + 产品规格 + 实施分步计划已定案，待 Human 审核后开始编码。
-- 协作方：TRAE（系统核心）、WorkBuddy（产品层）、Human（终审）。
+- **设计定案并经 Human 终审（2026-08-15）**：架构基线 v0.2.0 + 产品规格 v0.6 + 实施计划 v1.1 + 契约 v0.2.0（15 schema + 事件注册表）+ 客户端 UI-0 规格全部冻结。
+- **下一步**：P1 契约代码化管线（T-014）与 UI-1 前端工程骨架（T-015），可并行认领。
+- 协作方：对等 Agent 动态认领（trae / workbuddy / 未来加入者）+ Human 终审。

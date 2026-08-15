@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.2.0",
+  "decision_id": "dec_000002",
+  "learner_ref": "learner_alice",
+  "claim_ref": "dlc_fsi_german_a1:claim/vocab_haus",
+  "evidence_policy_ref": "dlc_fsi_german_a1:policy/core_vocab",
+  "evidence_policy_version": "1.0.0",
+  "status": "learned",
+  "learned": true,
+  "mastery_score": 0.86,
+  "reason_codes": ["banned.permanent_label"],
+  "evidence_refs": ["eg_20260815_0007"],
+  "evaluated_at": "2026-08-15T11:00:00+08:00",
+  "reducer_version": "0.2.0"
+}

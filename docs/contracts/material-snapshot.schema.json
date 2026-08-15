@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:language-learning-platform:schema:material-snapshot:0.2.0",
+  "title": "Material Snapshot",
+  "description": "Immutable frozen snapshot of resolved material. Whatever the source (stored pack, upload, LLM generation), material must be frozen into a snapshot BEFORE entering DLC compilation. Records full provenance: source, instruction, random seed, provider/model version, content hash, schema validation result, safety/quality checks. Same snapshot + same DLC/state/seed = reproducible compilation input (spec §2.7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "source",
+    "material_ref",
+    "content_sha256",
+    "schema_validation",
+    "quality_checks",
+    "created_at",
+    "lifecycle"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "snapshot_id": {
+      "$ref": "#/$defs/Identifier"
+    },
+    "source": {
+      "enum": [
+        "stored",
+        "uploaded",
+        "generated_random",
+        "generated_instructed",
+        "derived"
+      ]
+    },
+    "material_ref": {
+      "$ref": "#/$defs/ArtifactRef",
+      "description": "The schema-validated Material Pack artifact this snapshot freezes."
+    },
+    "source_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/ArtifactRef" },
+      "description": "For derived/generated material: the upstream packs or frames it was derived from."
+    },
+    "request_ref": {
+      "$ref": "#/$defs/Identifier",
+      "description": "The MaterialRequest this snapshot resolves, when generated at runtime."
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_id",
+        "model_version",
+        "template_version"
+      ],
+      "properties": {
+        "provider_id": { "$ref": "#/$defs/Identifier" },
+        "model_version": { "type": "string", "minLength": 1 },
+        "template_version": { "$ref": "#/$defs/SemVer" },
+        "random_seed": { "type": "integer", "minimum": 0 },
+        "generation_params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "value": { "$ref": "#/$defs/TypedValue" }
+            }
+          }
+        },
+        "user_instruction": { "type": "string", "maxLength": 4000 }
+      },
+      "description": "Mandatory provenance for generated material: prompt/seed/model version and parameters. LLM output never becomes course fact without this trace."
+    },
+    "content_sha256": {
+      "$ref": "#/$defs/Sha256"
+    },
+    "schema_validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["valid", "invalid", "not_performed"]
+        },
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" },
+        "validated_at": { "type": "string", "format": "date-time" },
+        "errors_ref": { "$ref": "#/$defs/Identifier" }
+      },
+      "description": "Schema-invalid generated material cannot enter Learning IR (spec §2.7)."
+    },
+    "quality_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status"],
+        "properties": {
+          "check_id": { "$ref": "#/$defs/Identifier" },
+          "status": { "enum": ["passed", "failed", "warning", "skipped"] },
+          "detail_ref": { "$ref": "#/$defs/Identifier" }
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lifecycle": {
+      "enum": ["ephemeral", "private_saved", "published", "withdrawn"],
+      "description": "ephemeral: runtime-only, usable by the requesting learner. private_saved/published require verified creator capability. withdrawn: removed from distribution; existing learning references remain valid."
+    },
+    "extensions": {
+      "$ref": "#/$defs/Extensions"
+    }
+  },
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "SemVer": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "TypedValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "string"],
+          "properties": {
+            "kind": { "const": "string" },
+            "string": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "int"],
+          "properties": {
+            "kind": { "const": "int" },
+            "int": { "type": "integer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "float"],
+          "properties": {
+            "kind": { "const": "float" },
+            "float": { "type": "number" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "bool"],
+          "properties": {
+            "kind": { "const": "bool" },
+            "bool": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "sha256"],
+      "properties": {
+        "uri": { "type": "string", "format": "uri" },
+        "sha256": { "$ref": "#/$defs/Sha256" },
+        "media_type": { "type": "string", "minLength": 1 },
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" }
+      }
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "schema_version", "payload_ref"],
+      "properties": {
+        "schema_id": { "$ref": "#/$defs/Identifier" },
+        "schema_version": { "$ref": "#/$defs/SemVer" },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri", "sha256"],
+          "properties": {
+            "uri": { "type": "string", "format": "uri" },
+            "sha256": { "$ref": "#/$defs/Sha256" }
+          }
+        }
+      }
+    },
+    "Extensions": {
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      }
+    }
+  }
+}

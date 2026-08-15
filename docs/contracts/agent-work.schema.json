@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:agent-work:0.1.0",
+  "$id": "urn:language-learning-platform:schema:agent-work:0.2.0",
   "title": "Agent Work Protocol",
-  "description": "Typed WorkItem and WorkResult records for bounded multi-agent orchestration.",
+  "description": "Typed WorkItem and WorkResult records for bounded multi-agent orchestration. v0.2.0: extensions use ExtensionEnvelope; diagnostic details use scalar maps instead of arbitrary JSON (spec §4.4).",
   "oneOf": [
     {
       "$ref": "#/$defs/WorkItem"
@@ -28,7 +28,45 @@
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
       },
-      "additionalProperties": true
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
     },
     "ArtifactRef": {
       "type": "object",
@@ -237,7 +275,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "0.1.0"
+          "const": "0.2.0"
         },
         "record_type": {
           "const": "work_item"
@@ -437,7 +475,14 @@
         },
         "details": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": "Scalar diagnostic details only; complex payloads must use an artifact reference."
         }
       }
     },
@@ -522,7 +567,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": "0.1.0"
+          "const": "0.2.0"
         },
         "record_type": {
           "const": "work_result"
@@ -628,7 +673,7 @@
   },
   "examples": [
     {
-      "schema_version": "0.1.0",
+      "schema_version": "0.2.0",
       "record_type": "work_item",
       "work_id": "work.material.annotate.0001",
       "workflow_id": "workflow.material.import.0001",

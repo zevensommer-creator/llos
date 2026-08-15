@@ -1,0 +1,142 @@
+{
+  "registry_id": "urn:language-learning-platform:registry:learning-event-types",
+  "registry_version": "0.2.0",
+  "spec_reference": "docs/LANGUAGE_PLATFORM_SPEC.md §2.5, §5.3",
+  "description": "Closed, versioned registry of learning event types. The event_type enum in learning-event.schema.json mirrors this registry and is the machine-enforced gate; unregistered event types are rejected by Core. DLC, Agents and Providers can never invent event names or write events directly. Adding or changing an event type requires an ADR, a learning-event schema version bump, and Human approval. Chat-mode activity never enters this event stream.",
+  "rules": {
+    "append_only_history": true,
+    "unregistered_types_rejected": true,
+    "chat_mode_excluded": true,
+    "idempotency_key_deduplication": true,
+    "policy_upgrade_rewrites_decisions_not_events": true,
+    "large_payloads_via_artifact_ref": true
+  },
+  "event_types": [
+    {
+      "event_type": "learning.session_started",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["composition"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "A LearningSession passed the three-layer readiness gate (Core ready, valid DLC, valid MaterialSnapshot, compiled IR, entitlement, Provider capabilities or explicit fallback) and execution started."
+    },
+    {
+      "event_type": "learning.session_completed",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The session reached a normal stop primitive with a typed success result."
+    },
+    {
+      "event_type": "learning.session_aborted",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["abort_reason"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The session ended abnormally with a typed abort_reason (material_unavailable, provider_unavailable, budget_exhausted, timeout, dlc_compile_failed, hard_stop, learner_exit, entitlement_lost). No half-written state may remain."
+    },
+    {
+      "event_type": "activity.presented",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["task", "payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The executor presented an activity lowered from DLC-declared high-level training modes into closed runtime primitives."
+    },
+    {
+      "event_type": "learner.response_submitted",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["task", "payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The learner submitted a response. Raw text/audio/large objects are stored as artifact references, never inline arbitrary JSON."
+    },
+    {
+      "event_type": "observation.recorded",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["claim_ref", "evidence_policy_ref", "task", "observation"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "An evaluator produced a typed observation (binary/scalar/rubric_vector/timed/artifact_evidence/abstention). performance and measurement_confidence are strictly separated; not yet accepted as evidence."
+    },
+    {
+      "event_type": "learning.evidence_recorded",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["claim_ref", "evidence_policy_ref", "task", "observation"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "An observation passed schema, permission, provenance, evaluator and measurement-confidence gates and now counts as evidence for or against one claim. Independence is deduplicated by evidence_group_id; duplicate idempotency keys never increase evidence counts."
+    },
+    {
+      "event_type": "mastery.decision_made",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["claim_ref", "evidence_policy_ref", "decision"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The Core policy interpreter produced a MasteryDecision (not_yet/provisional/learned/uncertain/lapsed) under a specific evidence policy version. Revocable; policy upgrades create new decisions, never rewrite old ones."
+    },
+    {
+      "event_type": "review.scheduled",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["claim_ref", "review"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "A delayed retest or review was scheduled by the rule_based scheduler or a DLC-selected memory scheduler (e.g. fsrs_memory). Memory schedulers may only schedule; they never declare learned."
+    },
+    {
+      "event_type": "feedback.presented",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["claim_ref", "payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "Structured feedback was presented to the learner. Raw pronunciation scores are never exposed directly; feedback follows the evidence-centered report protocol."
+    },
+    {
+      "event_type": "learner.correction_accepted",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["claim_ref", "payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The learner accepted or acknowledged a correction. Acceptance is an event fact, not by itself evidence of mastery."
+    },
+    {
+      "event_type": "composition.upgraded",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["composition"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "The session composition (core_version/dlc_ref/material_snapshot_ref/learning_ir_ref) was upgraded mid-session; the new composition is recorded and subsequent events reference it."
+    },
+    {
+      "event_type": "correction.manual_applied",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": ["claim_ref"],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": true,
+      "description": "A human correction was appended as an event. Projections are never edited directly; manual corrections only enter state through appended events."
+    },
+    {
+      "event_type": "projection.replay_completed",
+      "introduced_in": "0.2.0",
+      "producer": "core",
+      "required_fields": [],
+      "optional_fields": ["payload_ref"],
+      "enters_learning_reducer": false,
+      "description": "A LearnerStateProjection was deterministically rebuilt from the event stream. The payload reference records reducer/projector id, version, event sequence boundaries and input hash. Same event stream + same versions = field-identical projection."
+    }
+  ]
+}

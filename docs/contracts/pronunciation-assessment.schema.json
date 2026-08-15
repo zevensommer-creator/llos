@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:language-learning-platform:schema:pronunciation-assessment:0.1.0",
+  "$id": "urn:language-learning-platform:schema:pronunciation-assessment:0.2.0",
   "title": "Pronunciation Assessment",
-  "description": "Evidence-bearing pronunciation report with explicit audio quality, alignment, language calibration, uncertainty and abstention.",
+  "description": "Evidence-bearing pronunciation report with explicit audio quality, alignment, language calibration, uncertainty and abstention. v0.2.0: evidence values use TypedValue instead of arbitrary JSON; extensions use ExtensionEnvelope (spec §4.4).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -30,7 +30,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "0.1.0"
+      "const": "0.2.0"
     },
     "assessment_id": {
       "$ref": "#/$defs/Identifier"
@@ -203,7 +203,114 @@
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$"
       },
-      "additionalProperties": true
+      "additionalProperties": {
+        "$ref": "#/$defs/ExtensionEnvelope"
+      },
+      "description": "Extension fields require explicit schema ID and version (spec §4.4)."
+    },
+    "ExtensionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "payload_ref"
+      ],
+      "properties": {
+        "schema_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SemVer"
+        },
+        "payload_ref": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "format": "uri"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-fA-F0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "TypedValue": {
+      "description": "Discriminated union for evidence values. Arbitrary JSON is forbidden (spec §4.4).",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "string"
+          ],
+          "properties": {
+            "kind": {
+              "const": "string"
+            },
+            "string": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "number"
+          ],
+          "properties": {
+            "kind": {
+              "const": "number"
+            },
+            "number": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "boolean"
+          ],
+          "properties": {
+            "kind": {
+              "const": "boolean"
+            },
+            "boolean": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "artifact_ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "artifact_ref"
+            },
+            "artifact_ref": {
+              "$ref": "#/$defs/ArtifactRef"
+            }
+          }
+        }
+      ]
     },
     "ArtifactRef": {
       "type": "object",
@@ -723,7 +830,9 @@
             "human_annotation"
           ]
         },
-        "value": {},
+        "value": {
+          "$ref": "#/$defs/TypedValue"
+        },
         "unit": {
           "type": "string",
           "maxLength": 40
@@ -1080,7 +1189,7 @@
   },
   "examples": [
     {
-      "schema_version": "0.1.0",
+      "schema_version": "0.2.0",
       "assessment_id": "assessment.de.0001",
       "session_id": "session.0001",
       "activity_id": "activity.read-aloud.0001",
@@ -1160,7 +1269,10 @@
         {
           "evidence_id": "ev.duration.bieten.i",
           "kind": "duration",
-          "value": 71,
+          "value": {
+            "kind": "number",
+            "number": 71
+          },
           "unit": "ms",
           "confidence": 0.91,
           "interval": {
