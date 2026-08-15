@@ -1,0 +1,161 @@
+{
+  "schema_version": "0.2.0",
+  "dlc_id": "dlc.de.fsi-construction",
+  "version": "0.1.0",
+  "display_name": "FSI German Construction Drill Compiler (Reference)",
+  "description": "Referenz-DLC der ersten Generation: kompiliert Szenario-/Valenz-/Konstruktionsframes zu Substitutions-, Valenz-Lückentext- und Konstruktionsdrills (FSI-Tradition). Reine Deterministik: keine Provider-Aufrufe zur Compile-Zeit.",
+  "compatibility": {
+    "core_api": ">=0.2.0 <0.3.0",
+    "compiler_runtime": ">=0.1.0 <0.2.0",
+    "minimum_contracts": {
+      "material-pack": "0.2.1",
+      "learning-ir": "0.2.0",
+      "dlc-manifest": "0.2.0"
+    }
+  },
+  "supported_languages": [
+    {
+      "language": "de-DE",
+      "release_tier": "primary",
+      "language_profile_ref": "artifact://language-profiles/de-DE/0.2.0"
+    }
+  ],
+  "theory_profile": [
+    {
+      "id": "construction-grammar",
+      "name": "Construction Grammar",
+      "role": "primary",
+      "operational_claims": [
+        {
+          "claim_id": "construction-as-learning-unit",
+          "compiler_effect": "Activities are generated around form-meaning pair identifiers (frames) rather than isolated rules; each frame lowers to one drill stage.",
+          "test_ref": "test://compiler/golden"
+        }
+      ]
+    },
+    {
+      "id": "fsi-substitution",
+      "name": "FSI Substitution Drill Tradition",
+      "role": "supporting",
+      "operational_claims": [
+        {
+          "claim_id": "substitution-automation",
+          "compiler_effect": "Scenario frames lower to substitution drills with fixed repeat counts to automate surface patterns.",
+          "test_ref": "test://compiler/golden"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/checkin_dialogue",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "display_name": "Check-in Dialog führen"
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/verb_valence_dative",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "display_name": "Dativvalenz anbieten beherrschen"
+    },
+    {
+      "claim_ref": "dlc.de.fsi-construction:claim/polite_request_construction",
+      "evidence_policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "evidence_policy_version": "0.1.0",
+      "display_name": "Höfliche-Bitte-Konstruktion verwenden"
+    }
+  ],
+  "accepted_material_schemas": [
+    "urn:language-learning-platform:schema:material-pack:0.2.1"
+  ],
+  "material_request_templates": [
+    {
+      "id": "req.fresh-scenario",
+      "template_ref": "artifact://dlc/dlc.de.fsi-construction/requests/fresh-scenario",
+      "trigger": "on_material_shortage"
+    }
+  ],
+  "missing_input_handling": "reject_session",
+  "degradation_policy": {
+    "allowed": true,
+    "on_provider_failure": "offline_fallback",
+    "on_capability_missing": "pause_session",
+    "offline_allowed": true
+  },
+  "evidence_policies": [
+    {
+      "policy_ref": "dlc.de.fsi-construction:policy/retention_transfer",
+      "version": "0.1.0",
+      "policy_artifact": "artifact://dlc/dlc.de.fsi-construction/policies/retention-transfer/0.1.0"
+    }
+  ],
+  "output_ir": {
+    "schema_id": "urn:language-learning-platform:schema:learning-ir:0.2.0",
+    "version_range": ">=0.2.0 <0.3.0",
+    "kinds": ["pedagogical", "executable_session"]
+  },
+  "passes": [
+    {
+      "id": "material.parse",
+      "version": "0.1.0",
+      "stage": "material_parse",
+      "entrypoint": "llos.compiler.material_validate:run",
+      "input_kinds": ["material_pack"],
+      "output_kind": "validated_material",
+      "determinism": "deterministic",
+      "failure_policy": "fail_compilation"
+    },
+    {
+      "id": "pedagogical.plan",
+      "version": "0.1.0",
+      "stage": "theory",
+      "entrypoint": "llos.compiler.pedagogical_plan:run",
+      "input_kinds": ["validated_material"],
+      "output_kind": "pedagogical_ir",
+      "determinism": "deterministic",
+      "failure_policy": "fail_compilation"
+    },
+    {
+      "id": "executable.lower",
+      "version": "0.1.0",
+      "stage": "activity_codegen",
+      "entrypoint": "llos.compiler.executable_lower:run",
+      "input_kinds": ["pedagogical_ir"],
+      "output_kind": "executable_session_ir",
+      "determinism": "deterministic",
+      "failure_policy": "fail_compilation"
+    }
+  ],
+  "capability_requirements": [],
+  "permissions": [
+    "material.read",
+    "artifact.read",
+    "artifact.write_scoped"
+  ],
+  "budgets": {
+    "compile_timeout_ms": 30000,
+    "max_provider_calls": 0,
+    "max_cost_usd": 0,
+    "max_memory_mb": 256,
+    "max_output_bytes": 5000000
+  },
+  "quality_gates": [
+    {
+      "id": "ir.schema.valid",
+      "stage": "compile",
+      "severity": "error",
+      "validator_ref": "validator://learning-ir/0.2.0"
+    }
+  ],
+  "package": {
+    "artifact_uri": "artifact://dlc/dlc.de.fsi-construction/0.1.0",
+    "media_type": "application/zip",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "size_bytes": 1
+  },
+  "license": {
+    "spdx_id": "Apache-2.0",
+    "commercial_use": "allowed"
+  }
+}
