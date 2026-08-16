@@ -37,11 +37,11 @@ function expertModesPayload() {
         ],
       },
       {
-        mode_ref: "mode.expert.speak_drill",
+        mode_ref: "mode.expert.cloze",
         claim_suffix: "polite_request_construction",
         steps: [
           { primitive: "present" },
-          { primitive: "capture_audio", timeout_ms: 30000, max_recording_ms: 12000 },
+          { primitive: "capture_text", timeout_ms: 30000, max_length: 200 },
           { primitive: "evaluate" },
           { primitive: "feedback" },
           { primitive: "schedule" },
@@ -50,7 +50,7 @@ function expertModesPayload() {
     ],
     stage_modes: {
       "scenario.checkin": "mode.expert.dictation",
-      "concept.polite-request": "mode.expert.speak_drill",
+      "concept.polite-request": "mode.expert.cloze",
     },
   };
 }
@@ -114,9 +114,9 @@ test("expert mode: custom stages lower to template sequences, default stage unto
   const speak = steps.filter((s) => s.step_id.startsWith("concept.polite-request."));
   assert.deepStrictEqual(
     speak.map((s) => s.primitive),
-    ["present", "capture_audio", "evaluate", "feedback", "schedule"],
+    ["present", "capture_text", "evaluate", "feedback", "schedule"],
   );
-  assert.strictEqual(speak[1].capture.max_recording_ms, 12000);
+  assert.strictEqual(speak[1].capture.max_length, 200);
 
   // 未映射的 stage（valence.anbieten）保持内置默认链。
   const defaultStage = steps.filter((s) => s.step_id.startsWith("valence.anbieten."));
@@ -170,7 +170,7 @@ test("expert mode guards: exactly one capture, immediately followed by evaluate"
   twoCaptures.modes[0].steps = [
     { primitive: "present" },
     { primitive: "capture_text" },
-    { primitive: "capture_audio" },
+    { primitive: "capture_text" },
     { primitive: "evaluate" },
     { primitive: "feedback" },
     { primitive: "schedule" },
@@ -191,6 +191,106 @@ test("expert mode guards: stage_modes must reference a declared mode", () => {
   const bad = expertModesPayload();
   bad.stage_modes["valence.anbieten"] = "mode.ghost";
   assert.throws(() => parseTrainingModes(bad), /未定义的训练模式/);
+});
+
+test("expert mode guards: authoring whitelist excludes non-executable capture primitives (T-036)", () => {
+  const audio = expertModesPayload();
+  audio.modes[0].steps = [
+    { primitive: "present" },
+    { primitive: "capture_audio", timeout_ms: 30000 },
+    { primitive: "evaluate" },
+    { primitive: "feedback" },
+    { primitive: "schedule" },
+  ];
+  assert.throws(() => parseTrainingModes(audio), /步类型不受支持/);
+
+  const choice = expertModesPayload();
+  choice.modes[0].steps[1] = { primitive: "capture_choice", timeout_ms: 30000 };
+  assert.throws(() => parseTrainingModes(choice), /步类型不受支持/);
+});
+
+test("expert mode guards: unknown fields are rejected, not silently ignored (T-036)", () => {
+  const badStep = expertModesPayload();
+  badStep.modes[0].steps[1].max_recording_ms = 12000;
+  assert.throws(() => parseTrainingModes(badStep), /包含不支持的字段时间：max_recording_ms/);
+
+  const badRoot = expertModesPayload();
+  badRoot.extra = true;
+  assert.throws(() => parseTrainingModes(badRoot), /包含不支持的字段时间：extra/);
+
+  const badMode = expertModesPayload();
+  badMode.modes[0].difficulty = "A2";
+  assert.throws(() => parseTrainingModes(badMode), /包含不支持的字段时间：difficulty/);
+});
+
+test("expert mode guards: parameter upper bounds and safe-integer are enforced (T-036)", () => {
+  const tooLong = expertModesPayload();
+  tooLong.modes[0].steps[1].timeout_ms = 1_800_001;
+  assert.throws(() => parseTrainingModes(tooLong), /timeout_ms/);
+
+  const tooBigLength = expertModesPayload();
+  tooBigLength.modes[0].steps[1].max_length = 100_001;
+  assert.throws(() => parseTrainingModes(tooBigLength), /长度上限/);
+
+  const nonInteger = expertModesPayload();
+  nonInteger.modes[0].steps[1].timeout_ms = 1234.5;
+  assert.throws(() => parseTrainingModes(nonInteger), /timeout_ms/);
+});
+
+test("expert mode guards: zero/invalid review interval durations are rejected (T-036)", () => {
+  const zero = expertModesPayload();
+  zero.modes[0].steps[4].interval = "PT0S";
+  assert.throws(() => parseTrainingModes(zero), /正的时长/);
+
+  const empty = expertModesPayload();
+  empty.modes[0].steps[4].interval = "P";
+  assert.throws(() => parseTrainingModes(empty), /正的时长/);
+
+  const malformed = expertModesPayload();
+  malformed.modes[0].steps[4].interval = "12 hours";
+  assert.throws(() => parseTrainingModes(malformed), /正的时长/);
+});
+
+test("expert mode guards: stage_modes must reference an existing material-pack stage (T-036)", () => {
+  const bad = expertModesPayload();
+  bad.stage_modes["frame.999"] = "mode.expert.dictation";
+  assert.throws(() => compileWithModes(bad), /不存在于素材包中/);
+});
+
+test("expert mode: envelope schema_id, schema_version, and URI are strictly validated (T-036)", () => {
+  const { materialPack, templateContent } = loadFixtures();
+  const content = JSON.stringify(expertModesPayload());
+  const run = (manifest) =>
+    runCompiler(
+      { manifest, snapshot: makeSnapshot(materialPack), materialPack },
+      {
+        clock: () => "2026-08-16T00:00:00Z",
+        seed: 0,
+        templateResolver: resolverWith(content, templateContent),
+      },
+    );
+
+  const wrongId = withModesManifest(expertModesPayload()).manifest;
+  wrongId.extensions[TRAINING_MODES_EXTENSION_KEY].schema_id = "other.extension";
+  assert.throws(
+    () => run(wrongId),
+    (e) => e instanceof CompilationError && e.code === "training_modes_invalid" && /schema_id 不正确/.test(e.message),
+  );
+
+  const wrongVersion = withModesManifest(expertModesPayload()).manifest;
+  wrongVersion.extensions[TRAINING_MODES_EXTENSION_KEY].schema_version = "9.9.9";
+  assert.throws(
+    () => run(wrongVersion),
+    (e) => e instanceof CompilationError && e.code === "training_modes_invalid" && /schema_version 不受支持/.test(e.message),
+  );
+
+  const wrongUri = withModesManifest(expertModesPayload()).manifest;
+  wrongUri.extensions[TRAINING_MODES_EXTENSION_KEY].payload_ref.uri =
+    "artifact://dlc/dlc.other/templates/training-modes";
+  assert.throws(
+    () => run(wrongUri),
+    (e) => e instanceof CompilationError && e.code === "training_modes_invalid" && /URI 必须指向当前 DLC/.test(e.message),
+  );
 });
 
 test("expert mode: extension payload is sha256-bound; tampering fails compilation", () => {

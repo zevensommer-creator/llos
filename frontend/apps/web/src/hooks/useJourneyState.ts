@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import {
-  MockApiClient,
+  type ApiClient,
   type ChatSessionView,
   type JourneyId,
   type LearningSessionView,
-  type LoadScenario,
   type LoadState,
   type TeacherMobileDashboardViewModel,
   type WorkbenchView,
@@ -22,7 +21,7 @@ export interface JourneyDataMap {
 
 /** 模块级稳定 loader 表（避免 useEffect 依赖抖动导致重复加载）。 */
 const JOURNEY_LOADERS: {
-  [K in JourneyId]: (c: MockApiClient) => Promise<LoadState<JourneyDataMap[K]>>;
+  [K in JourneyId]: (c: ApiClient) => Promise<LoadState<JourneyDataMap[K]>>;
 } = {
   chat: (c) => c.loadChatSession(),
   learning: (c) => c.loadLearningSession(),
@@ -36,14 +35,12 @@ const JOURNEY_LOADERS: {
  */
 export function useJourneyState<K extends JourneyId>(
   journey: K,
-  scenario: LoadScenario,
-  accountKind: AccountKind,
+  client: ApiClient,
   reloadKey: number,
 ): LoadState<JourneyDataMap[K]> | null {
   const [state, setState] = useState<LoadState<JourneyDataMap[K]> | null>(null);
 
   useEffect(() => {
-    const client = new MockApiClient({ account: accountKind, scenarios: { [journey]: scenario } });
     let live = true;
     void JOURNEY_LOADERS[journey](client).then((s) => {
       if (live) setState(s);
@@ -51,7 +48,7 @@ export function useJourneyState<K extends JourneyId>(
     return () => {
       live = false;
     };
-  }, [journey, scenario, accountKind, reloadKey]);
+  }, [journey, client, reloadKey]);
 
   return state;
 }

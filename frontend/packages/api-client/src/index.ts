@@ -68,4 +68,5 @@ export {
   resetMockStudio,
   type MockApiClientOptions,
 } from "./mock.js";
+export { HttpApiClient, type HttpApiClientOptions } from "./http.js";
 export { ALL_STATE_KINDS, describeState, type StatePresentation } from "./presentation.js";

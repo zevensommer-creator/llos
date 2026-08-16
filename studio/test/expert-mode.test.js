@@ -262,6 +262,56 @@ test("expert manifest editing: display copy edits pass, identity and schema are 
   );
 });
 
+test("expert manifest editing cannot drop the training-modes extension while a payload exists (T-036 atomic consistency)", async () => {
+  const { drafts, draft } = await setup();
+  drafts.editTrainingModes(TEACHER, draft.draft_id, JSON.stringify(expertModesPayload()));
+
+  // schema 合法但删除了训练模式扩展 → payload 仍在，必须被原子一致性守卫拒绝。
+  const stripped = structuredClone(draft.manifest);
+  delete stripped.extensions;
+  assert.throws(
+    () => drafts.editManifest(TEACHER, draft.draft_id, JSON.stringify(stripped)),
+    (e) => e instanceof StudioError && e.code === "draft_schema_invalid" && /训练模式扩展缺失/.test(e.message),
+  );
+});
+
+test("expert manifest editing cannot add a training-modes extension without a payload (T-036 atomic consistency)", async () => {
+  const { drafts, draft } = await setup();
+  const injected = structuredClone(draft.manifest);
+  injected.extensions = {
+    "llos.training-modes": {
+      schema_id: "llos.training-modes",
+      schema_version: "0.1.0",
+      payload_ref: {
+        uri: `artifact://dlc/${draft.manifest.dlc_id}/templates/training-modes`,
+        sha256: "0".repeat(64),
+      },
+    },
+  };
+  assert.throws(
+    () => drafts.editManifest(TEACHER, draft.draft_id, JSON.stringify(injected)),
+    (e) => e instanceof StudioError && e.code === "draft_schema_invalid" && /没有对应的训练模式定义/.test(e.message),
+  );
+});
+
+test("saving the manifest after training modes preserves the extension and still compiles (T-036)", async () => {
+  const { drafts, draft } = await setup();
+  const modesJson = JSON.stringify(expertModesPayload());
+  drafts.editTrainingModes(TEACHER, draft.draft_id, modesJson);
+
+  const manifest = structuredClone(drafts.get(TEACHER, draft.draft_id).manifest);
+  manifest.display_name = "Café Deutsch (edited)";
+  const edited = drafts.editManifest(TEACHER, draft.draft_id, JSON.stringify(manifest));
+  assert.equal(edited.training_modes_json, modesJson, "payload preserved across manifest edit");
+  const envelope = edited.manifest.extensions["llos.training-modes"];
+  assert.ok(envelope, "extension preserved across manifest edit");
+  const report = runSandboxTrial(edited.material_pack, edited.manifest, {
+    clock: () => "2026-08-16T10:05:00Z",
+    trainingModes: modesJson,
+  });
+  assert.equal(report.status, "completed", "custom mode still runs after manifest edit");
+});
+
 test("expert mode full path: custom-mode DLC publishes to the market (T-034 acceptance)", async () => {
   const { drafts, market, studio, draft } = await setup();
   drafts.editTrainingModes(TEACHER, draft.draft_id, JSON.stringify(expertModesPayload()));

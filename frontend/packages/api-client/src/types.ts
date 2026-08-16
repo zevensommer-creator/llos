@@ -590,4 +590,7 @@ export interface ApiClient {
   createStudioDraftFromTemplate(templateId: string, language: string, cefrLevel: "A1" | "A2" | "B1" | "B2" | "C1" | "C2"): Promise<CreateStudioDraftOutcome>;
   editTrainingModes(draftId: string, modesJson: string): Promise<ExpertEditStudioOutcome>;
   editManifest(draftId: string, manifestJson: string): Promise<ExpertEditStudioOutcome>;
+
+  /** T-036：可用 BYOK Provider 家族由 API 下发，页面不得硬编码品牌常量。 */
+  listByokProviderFamilies(): Promise<readonly string[]>;
 }

@@ -1,0 +1,7 @@
+{
+  "task_id": "T-038",
+  "owner": "trae",
+  "claimed_at": "2026-08-16T18:30:00+08:00",
+  "status": "doing",
+  "touched_paths": [".github/workflows/", "frontend/apps/web/e2e/", "frontend/apps/web/package.json", "package.json", "scripts/", "docs/reviews/", "TASKS.md"]
+}

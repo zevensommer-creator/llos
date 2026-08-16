@@ -319,7 +319,7 @@ test("expert training modes: guard failures surface teaching-language errors", a
         steps: [
           { primitive: "present" },
           { primitive: "capture_text" },
-          { primitive: "capture_audio" },
+          { primitive: "capture_text" },
           { primitive: "evaluate" },
           { primitive: "feedback" },
           { primitive: "schedule" },
@@ -330,6 +330,26 @@ test("expert training modes: guard failures surface teaching-language errors", a
   const guarded = await teacher.editTrainingModes(draft.draft_id, twoCaptures);
   assert.equal(guarded.status, "invalid_content");
   assert.match(guarded.message, /恰好包含一个学员作答步骤/);
+
+  // T-036：capture_audio 已从白名单移除，单一 parser 拒绝"表面支持、实际不可运行"的原语。
+  const unsupported = JSON.stringify({
+    modes: [
+      {
+        mode_ref: "mode.expert.dictation",
+        claim_suffix: "checkin_dialogue",
+        steps: [
+          { primitive: "present" },
+          { primitive: "capture_audio" },
+          { primitive: "evaluate" },
+          { primitive: "feedback" },
+          { primitive: "schedule" },
+        ],
+      },
+    ],
+  });
+  const rejectedPrimitive = await teacher.editTrainingModes(draft.draft_id, unsupported);
+  assert.equal(rejectedPrimitive.status, "invalid_content");
+  assert.match(rejectedPrimitive.message, /类型不受支持/);
 
   const undeclared = expertModesJson().replace("checkin_dialogue", "claim_not_declared");
   const rejected = await teacher.editTrainingModes(draft.draft_id, undeclared);

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/**']
   pull_request:
 
 jobs:
@@ -19,3 +19,25 @@ jobs:
       - run: pnpm -r build
       - run: pnpm -r test
       - run: pnpm -r typecheck
+      # 服务级 integration gate（不经 HTTP/浏览器；真实 HTTP+Gateway+浏览器链路由 e2e-web job 覆盖）
+      - run: pnpm e2e:p7
+
+  e2e-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e:p7:web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/apps/web/test-results/
+          retention-days: 7
