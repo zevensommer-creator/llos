@@ -1,9 +1,14 @@
-// P7 acceptance (BUILD_PLAN T-033/T-034/T-035): E2E — 模板加速器预填 / PNG 图片
-// OCR 摄入 → AI 结构化 → 专家模式自定义训练模式（绕过向导直接编辑训练模式定义）
-// → 沙箱（含自定义模式）→ 发布 → 市场获取 → 学员真实训练（编译产物含自定义
-// 训练模式步骤序列）。全程走真实后端包（core/market/compiler/gateway/studio），
-// 无 Mock；平台 fallback Provider 输出空 frames——若被误路由，结构化会直接失败，
-// 隐式断言 BYOK 优先、平台零调用（§6.5）。
+// P7 acceptance (BUILD_PLAN T-033/T-034/T-035): 服务级 integration gate ——
+// 模板加速器预填 / PNG 图片 OCR 摄入 → AI 结构化 → 专家模式自定义训练模式
+// （绕过向导直接编辑训练模式定义）→ 沙箱（含自定义模式）→ 发布 → 市场获取
+// → 学员真实训练（编译产物含自定义训练模式步骤序列）。
+//
+// 本脚本是「服务级」gate：直接在 Node 进程内装配真实域服务
+// （core/market/compiler/gateway/studio），不经 HTTP、不经浏览器。
+// Provider 使用确定性的 Fake transport（studio/test/fixtures）；真实
+// HTTP API + Gateway adapter + 浏览器链路由 e2e:p7:web（Playwright）覆盖，
+// 其中 OCR 为确定性 base64 解码（无真实网络 OCR 引擎；真实 OCR smoke 未执行，
+// 见 docs/reviews/P7_IMPLEMENTATION_PACKET.md）。
 
 import assert from "node:assert/strict";
 import {

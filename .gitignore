@@ -21,6 +21,11 @@ Desktop.ini
 # 导入暂存区（正本已归档到 docs/）
 导入/
 
-# 导出副本区（现行文件的审核/导出副本，不进版本库）
+# 导出副本区（现行文件的审核/导出副本，不进版本库；进度快照除外，经 git add -f 单独入库）
 导出/
 导出.zip
+
+# 测试产物
+test-results/
+playwright-report/
+*.trace.zip

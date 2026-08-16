@@ -83,7 +83,9 @@ export class HttpApiClient implements ApiClient {
   constructor(options: HttpApiClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? "/api").replace(/\/$/, "");
     this.getAccountId = options.getAccountId ?? (() => DEFAULT_ACCOUNT);
-    this.fetchImpl = options.fetchImpl ?? (globalThis.fetch as typeof fetch);
+    // 必须 bind：浏览器里裸存 globalThis.fetch 会在调用时因丢失 this 抛
+    // Illegal invocation，被上层误映射为"网络请求失败"（T-038 浏览器 E2E 首次暴露）。
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.timeoutMs = options.timeoutMs ?? 10_000;
   }
 

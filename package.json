@@ -13,7 +13,9 @@
     "e2e:p4": "node scripts/e2e-p4.mjs",
     "e2e:p5": "node scripts/e2e-p5.mjs",
     "e2e:p6": "node scripts/e2e-p6.mjs",
-    "e2e:p7": "node scripts/e2e-p7.mjs"
+    "e2e:p7": "node scripts/e2e-p7.mjs",
+    "e2e:p7:web": "playwright test -c frontend/apps/web/e2e/playwright.config.ts",
+    "verify:p7": "pnpm -r build && pnpm -r test && pnpm -r typecheck && pnpm e2e:p7 && pnpm e2e:p7:web"
   },
   "packageManager": "pnpm@11.21.0",
   "engines": {
@@ -25,6 +27,7 @@
     "@llos/gateway": "workspace:*",
     "@llos/market": "workspace:*",
     "@llos/speech": "workspace:*",
-    "@llos/studio": "workspace:*"
+    "@llos/studio": "workspace:*",
+    "@playwright/test": "^1.62.1"
   }
 }
