@@ -27,6 +27,34 @@ importers:
         specifier: workspace:*
         version: link:studio
 
+  api:
+    dependencies:
+      '@llos/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@llos/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@llos/core':
+        specifier: workspace:*
+        version: link:../core
+      '@llos/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@llos/market':
+        specifier: workspace:*
+        version: link:../market
+      '@llos/studio':
+        specifier: workspace:*
+        version: link:../studio
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   compiler:
     dependencies:
       '@llos/contracts':

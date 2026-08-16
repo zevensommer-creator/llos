@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  MockApiClient,
-  type Account,
-  type LoadScenario,
-} from "@llos/api-client";
+import type { Account, LoadScenario } from "@llos/api-client";
+import { API_MODE, createApiClient } from "./apiClient";
 import { JourneyHost } from "./components/JourneyHost";
 import { ChatJourney } from "./journeys/ChatJourney";
 import { LearningJourney } from "./journeys/LearningJourney";
@@ -45,8 +42,8 @@ function App() {
   const [account, setAccount] = useState<Account | null>(null);
 
   // 市场流程需要跨视图共享状态（获取/评价），复用同一 client 实例；
-  // 模块级市场状态保证即使新建实例也能看到服务端语义的结果。
-  const client = useMemo(() => new MockApiClient({ account: accountKind }), [accountKind]);
+  // VITE_API_MODE=mock 时 client 随场景重建（七态演示）；real 时忽略场景。
+  const client = useMemo(() => createApiClient(accountKind, scenario), [accountKind, scenario]);
 
   useEffect(() => {
     void client.getAccount().then(setAccount);
@@ -66,16 +63,18 @@ function App() {
               <option value="teacher">教师</option>
             </select>
           </label>
-          <label className="control">
-            场景（七态演示）
-            <select value={scenario} onChange={(e) => setScenario(e.target.value as LoadScenario)}>
-              {SCENARIOS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {API_MODE === "mock" ? (
+            <label className="control">
+              场景（七态演示）
+              <select value={scenario} onChange={(e) => setScenario(e.target.value as LoadScenario)}>
+                {SCENARIOS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="account">{account ? account.display_name : "加载中"}</div>
         </div>
       </header>
@@ -95,12 +94,12 @@ function App() {
 
       <main className="workbench">
         {view === "chat" ? (
-          <JourneyHost journey="chat" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+          <JourneyHost journey="chat" client={client} reloadKey={reloadKey} account={account} onRetry={retry}>
             {(data) => <ChatJourney data={data} />}
           </JourneyHost>
         ) : null}
         {view === "learning" ? (
-          <JourneyHost journey="learning" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+          <JourneyHost journey="learning" client={client} reloadKey={reloadKey} account={account} onRetry={retry}>
             {(data) => <LearningJourney data={data} />}
           </JourneyHost>
         ) : null}
@@ -114,7 +113,7 @@ function App() {
           <StudioJourney client={client} onOpenMarket={() => setView("market")} />
         ) : null}
         {view === "workbench" ? (
-          <JourneyHost journey="workbench" scenario={scenario} accountKind={accountKind} reloadKey={reloadKey} account={account} onRetry={retry}>
+          <JourneyHost journey="workbench" client={client} reloadKey={reloadKey} account={account} onRetry={retry}>
             {(data, acc) => <WorkbenchJourney data={data} account={acc} onOpenMarket={() => setView("market")} />}
           </JourneyHost>
         ) : null}

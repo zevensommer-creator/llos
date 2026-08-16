@@ -1,0 +1,7 @@
+{
+  "task_id": "T-037",
+  "owner": "trae",
+  "claimed_at": "2026-08-16T15:00:00+08:00",
+  "status": "review",
+  "touched_paths": ["api/", "frontend/packages/api-client/", "frontend/apps/web/src/", "docs/adr/", "TASKS.md"]
+}
