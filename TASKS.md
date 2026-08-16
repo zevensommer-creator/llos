@@ -147,6 +147,7 @@
 | 2026-08-16 | TRAE | Human 指示按 BUILD_PLAN 继续 → P6（Studio v1 + BYOK）启动：登记 T-030（BYOK 密钥管理+Gateway 路由）/ T-031（Studio 摄入管线+草稿+沙箱+版本/下架）/ T-032（Studio 向导 UI+E2E）；T-030 认领 → doing，分支 feature/trae-byok，范围 core/src/byok.ts + core/test/ + gateway/src/ + gateway/test/ |
 | 2026-08-16 | TRAE | T-030 完成：core ByokVault（存储属 Core 特权 §6.11：掩码视图/属主校验/防枚举）+ gateway byok 装配（descriptor 零密钥材料、credential 大写引用、privacy 声明）+ prefer_provider_ids BYOK 优先路由（平台回落）+ 11 新测试；修复 descriptor credential_ref_names 大写模式约束；全 workspace 350 测试绿；合并 main（fast-forward）已推送，锁已释放。继续 T-031 |
 | 2026-08-16 | TRAE | T-031 完成：新包 studio/（摄入管线 material.generation BYOK 优先→Material Pack+manifest 草稿 schema 校验+教学语言错误翻译；草稿生命周期 create_dlc_draft 门禁/属主隔离/confirm 重建；沙箱试用丢弃式事件收集器；版本隐形 patch/minor/major 判定；StudioService 发布门禁 confirmed+告知义务确认+编译门禁+修订自动 bump）+ market delist（新获取停止/已获取保留/目录隐藏）；22 新测试；全 workspace 372 测试绿；合并 main（fast-forward）已推送，锁已释放 |
+| 2026-08-16 | TRAE | Human 指示暂停并同步：T-032~T-038 已完成/进行中状态见 feature/trae-p7-hardening（T-036/T-037 review、T-038 doing）；**进度快照《进度2.2》存档于 `暂存/进度2.2.md`（GitHub main，提交 4f947ae）**，供其他 Agent 获取；工作空间 `导出/进度2.2.md` 为本地副本 |
 
 ---
 
