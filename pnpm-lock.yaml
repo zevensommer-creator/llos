@@ -159,6 +159,10 @@ importers:
         version: 8.2.1(@types/node@22.20.1)(terser@5.50.0)(yaml@2.9.0)
 
   frontend/packages/api-client:
+    dependencies:
+      '@llos/compiler':
+        specifier: workspace:*
+        version: link:../../../compiler
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

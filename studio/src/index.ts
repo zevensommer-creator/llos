@@ -13,8 +13,6 @@ export {
   parseStructuredOutput,
   parseOcrOutput,
   deterministicStructureTransport,
-  deterministicOcrTransport,
-  deterministicStudioTransport,
   type IngestSource,
   type IngestDeps,
   type PdfTextExtractor,

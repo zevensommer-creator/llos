@@ -5,6 +5,20 @@
   "description": "LLOS DLC compiler runtime: material.validate -> pedagogical.plan -> executable.lower",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./training-modes-parse": {
+      "types": "./dist/training-modes-parse.d.ts",
+      "import": "./dist/training-modes-parse.js",
+      "require": "./dist/training-modes-parse.js",
+      "default": "./dist/training-modes-parse.js"
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "node --test \"test/*.test.js\"",

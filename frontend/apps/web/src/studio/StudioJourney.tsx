@@ -41,7 +41,9 @@ const LANGUAGE_OPTIONS: readonly { value: string; label: string }[] = [
 const CEFR_OPTIONS: readonly StudioUnitCefr[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
 type StudioUnitCefr = PublishStudioInput["difficulty"];
 
-const BYOK_FAMILIES: readonly string[] = ["deepseek", "openai", "gemini"];
+// T-036：上传图片仅接受 PNG/JPEG，且限制大小；服务商品牌列表不得硬编码，由 API 下发。
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MiB
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg"] as const;
 
 const SAMPLE_TEXT = [
   "Szenario: Im Café bestellen | Ich hätte gern einen Kaffee, bitte.",
@@ -88,7 +90,8 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
   const [manifestJson, setManifestJson] = useState("");
 
   const [byokKeys, setByokKeys] = useState<readonly ByokEntryView[] | null>(null);
-  const [byokFamily, setByokFamily] = useState("deepseek");
+  const [byokFamilies, setByokFamilies] = useState<readonly string[] | null>(null);
+  const [byokFamily, setByokFamily] = useState("");
   const [byokLabel, setByokLabel] = useState("");
   const [byokKey, setByokKey] = useState("");
 
@@ -104,6 +107,21 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
     let live = true;
     void client.listByokKeys().then((keys) => {
       if (live) setByokKeys(keys);
+    });
+    return () => {
+      live = false;
+    };
+  }, [client]);
+
+  useEffect(() => {
+    let live = true;
+    // T-036：服务商品牌家族由 API 下发，页面不硬编码品牌常量。
+    void client.listByokProviderFamilies().then((families) => {
+      if (!live) return;
+      setByokFamilies(families);
+      setByokFamily((current) =>
+        current && families.includes(current) ? current : (families[0] ?? ""),
+      );
     });
     return () => {
       live = false;
@@ -162,13 +180,13 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
     setNotice(`已从模板「${tpl.title}」预填：AI 识别出 ${outcome.draft.units.length} 个学习单元，可逐课修改`);
   }
 
-  async function startDraftFromImage(base64: string) {
+  async function startDraftFromImage(base64: string, mediaType: string) {
     setNotice(null);
     setWarn(null);
     setOcrBusy(true);
     try {
       const outcome = await client.createStudioDraft({
-        image: { base64, media_type: "image/png" },
+        image: { base64, media_type: mediaType },
         title: title.trim() || "图片课程",
         language,
         cefrLevel: cefr,
@@ -193,16 +211,27 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
   function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setWarn("请上传 PNG 图片（当前只支持图片 OCR 提取文字）");
+    // T-036：严格媒体验证（仅 PNG/JPEG）+ 大小上限 + 读取失败处理 + 提交 pending 防重复。
+    if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
+      setWarn("请上传 PNG 或 JPEG 图片（当前只支持这两种格式的 OCR 提取文字）");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setWarn("图片超过 5 MB，请压缩后再上传，或直接粘贴文字");
+      e.target.value = "";
       return;
     }
     const reader = new FileReader();
+    reader.onerror = () => {
+      setWarn("图片读取失败，请重试或换一张图片");
+      if (fileRef.current) fileRef.current.value = "";
+    };
     reader.onload = () => {
       const result = reader.result;
       if (typeof result === "string") {
         const base64 = result.includes(",") ? result.slice(result.indexOf(",") + 1) : result;
-        void startDraftFromImage(base64);
+        void startDraftFromImage(base64, file.type);
       }
     };
     reader.readAsDataURL(file);
@@ -224,6 +253,8 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
       return;
     }
     setDraft(outcome.draft);
+    // T-036：训练模式保存会更新 manifest 的扩展引用（原子一致），需刷新清单编辑器基线。
+    setManifestJson(outcome.draft.manifest_json ?? manifestJson);
     setNotice("训练模式已保存并通过编译检查；向导编辑已锁定，继续确认后进入沙箱");
   }
 
@@ -405,10 +436,18 @@ export function StudioJourney({ client, onOpenMarket }: StudioJourneyProps) {
             <form className="studio-byok-form" onSubmit={(e) => void registerByok(e)}>
               <label className="control">
                 服务商
-                <select value={byokFamily} onChange={(e) => setByokFamily(e.target.value)}>
-                  {BYOK_FAMILIES.map((f) => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
+                <select
+                  value={byokFamily}
+                  onChange={(e) => setByokFamily(e.target.value)}
+                  disabled={byokFamilies === null || byokFamilies.length === 0}
+                >
+                  {byokFamilies === null ? (
+                    <option value="">加载中…</option>
+                  ) : (
+                    byokFamilies.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))
+                  )}
                 </select>
               </label>
               <label className="control">

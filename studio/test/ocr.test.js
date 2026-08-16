@@ -12,8 +12,8 @@ const {
   StudioError,
   ingestSource,
   parseOcrOutput,
-  deterministicStudioTransport,
 } = require("../dist/index.js");
+const { deterministicStudioTransport } = require("./fixtures/deterministic-transport.js");
 const { InMemoryAccountStore } = require("@llos/core");
 const { validate } = require("@llos/contracts");
 
@@ -175,6 +175,20 @@ test("a provider returning garbage OCR output surfaces a teaching-language error
       e.code === "ocr_output_invalid" &&
       e.message.includes("图片文字识别失败") &&
       !e.message.includes("pages"),
+  );
+});
+
+test("no OCR provider surfaces typed provider_unavailable (not a fake UTF-8 decode)", async () => {
+  const registry = new ProviderRegistry();
+  registry.register(platformDescriptor());
+  registry.attach("provider.platform.llm", new FakeProvider("provider.platform.llm", { output: { frames: [] } }));
+  const bareGateway = new ProviderGateway(registry);
+  await assert.rejects(
+    ingestSource(
+      { kind: "image", bytes: pngStub(CAFE_TEXT), language: "de-DE", title: "x" },
+      { gateway: bareGateway },
+    ),
+    (e) => e instanceof StudioError && e.code === "provider_unavailable",
   );
 });
 

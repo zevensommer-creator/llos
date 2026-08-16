@@ -242,15 +242,6 @@ function lowerCustomStage(
           max_length: def.max_length ?? CAPTURE_MAX_LENGTH,
         };
         break;
-      case "capture_audio":
-        base.capture = {
-          timeout_ms: def.timeout_ms ?? CAPTURE_TIMEOUT_MS,
-          max_recording_ms: def.max_recording_ms ?? 10_000,
-        };
-        break;
-      case "capture_choice":
-        base.capture = { timeout_ms: def.timeout_ms ?? CAPTURE_TIMEOUT_MS };
-        break;
       case "evaluate":
         base.evaluate = {
           evaluator: { id: "eval.typed_answer", version: "0.1.0", kind: "rule" },

@@ -25,12 +25,12 @@ import {
   StudioDrafts,
   StudioService,
   StudioError,
-  deterministicStudioTransport,
   runSandboxTrial,
   compileDraft,
   STUDIO_TEMPLATES,
   templateById,
 } from "@llos/studio";
+import { deterministicStudioTransport } from "../studio/test/fixtures/deterministic-transport.js";
 
 let step = 0;
 function pass(label) {

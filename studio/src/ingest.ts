@@ -1,4 +1,4 @@
-import type { ProviderGateway } from "@llos/gateway";
+import { GatewayError, type ProviderGateway } from "@llos/gateway";
 import { StudioError } from "./errors.js";
 
 // 摄入管线（product_spec §6.2）：任意思想来源 → 格式解析 → 经 Provider
@@ -85,19 +85,32 @@ async function ocrImageText(
   source: { bytes: Uint8Array; language: string; media_type?: string },
   deps: IngestDeps,
 ): Promise<{ text: string; ocr_by: { provider_id: string; model_id?: string } }> {
-  const result = await deps.gateway.execute({
-    capability_id: STRUCTURE_CAPABILITY_ID,
-    operation: OCR_OPERATION,
-    language: source.language,
-    input: {
-      kind: "ingest.ocr",
-      image_base64: Buffer.from(source.bytes).toString("base64"),
-      media_type: source.media_type ?? "image/png",
-    },
-    ...(deps.preferProviderIds && deps.preferProviderIds.length > 0
-      ? { prefer_provider_ids: [...deps.preferProviderIds] }
-      : {}),
-  });
+  let result: Awaited<ReturnType<ProviderGateway["execute"]>>;
+  try {
+    result = await deps.gateway.execute({
+      capability_id: STRUCTURE_CAPABILITY_ID,
+      operation: OCR_OPERATION,
+      language: source.language,
+      input: {
+        kind: "ingest.ocr",
+        image_base64: Buffer.from(source.bytes).toString("base64"),
+        media_type: source.media_type ?? "image/png",
+      },
+      ...(deps.preferProviderIds && deps.preferProviderIds.length > 0
+        ? { prefer_provider_ids: [...deps.preferProviderIds] }
+        : {}),
+    });
+  } catch (err) {
+    // 系统边界：无 OCR Provider 是确定性"不可用"信号，不是输出内容问题。
+    if (err instanceof GatewayError) {
+      throw new StudioError(
+        "provider_unavailable",
+        "当前没有可用的图片识别服务，暂时无法读取图片；请稍后重试，或直接粘贴文字。",
+        [err.code],
+      );
+    }
+    throw err;
+  }
   return {
     text: parseOcrOutput(result.output, result.provider_id),
     ocr_by: { provider_id: result.provider_id, ...(result.model_id ? { model_id: result.model_id } : {}) },
@@ -192,37 +205,6 @@ function structureError(detail: string): StudioError {
     `AI 结构化结果无法使用：${detail}。请在表单里修改后重试，或调整输入内容。`,
     [detail],
   );
-}
-
-/**
- * 第一代确定性 OCR Fake（服务 BYOK transport 与测试）：把 base64 图片解码
- * 回字节并按 UTF-8 读出文字，允许携带 "%PNG-STUB" 首行标记模拟 PNG 容器。
- * 真实 OCR（视觉模型）由 parseOcrOutput 消费，后续任务替换本 transport。
- */
-export function deterministicOcrTransport(
-  request: { input: unknown },
-  _context: unknown,
-): { text: string } {
-  const input = request.input as { image_base64?: unknown; media_type?: unknown } | undefined;
-  if (typeof input?.image_base64 !== "string" || input.image_base64.length === 0) {
-    throw new Error("ocr fake: image_base64 missing");
-  }
-  const bytes = Buffer.from(input.image_base64, "base64");
-  const text = new TextDecoder("utf-8").decode(bytes);
-  return { text: text.replace(/^%PNG-STUB\r?\n/, "") };
-}
-
-/**
- * 第一代确定性 Studio transport：按 operation 分派 OCR 与结构化 Fake，
- * 一次图片摄入的两次 gateway 调用（ocr → structure）都留在同一 BYOK provider。
- */
-export function deterministicStudioTransport(
-  request: { operation?: unknown; input: unknown },
-  context: unknown,
-): unknown {
-  return request.operation === OCR_OPERATION
-    ? deterministicOcrTransport(request, context)
-    : deterministicStructureTransport(request, context);
 }
 
 /**

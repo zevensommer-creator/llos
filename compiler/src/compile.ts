@@ -117,7 +117,11 @@ export function runCompiler(input: CompileInput, options: CompileOptions = {}): 
     input,
     options: { ...options, seed: options.seed ?? 0 },
     manifestHash: contentHash(input.manifest),
-    trainingModes: loadTrainingModes(input.manifest, options.templateResolver),
+    trainingModes: loadTrainingModes(
+      input.manifest,
+      options.templateResolver,
+      new Set(input.materialPack.semantic_frames.map((frame) => frame.id)),
+    ),
     completedPasses: [],
   };
 

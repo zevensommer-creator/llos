@@ -248,7 +248,10 @@ export class StudioDrafts {
       );
     }
     try {
-      parseTrainingModes(payload);
+      parseTrainingModes(
+        payload,
+        new Set(draft.material_pack.semantic_frames.map((frame) => frame.id)),
+      );
     } catch (err) {
       throw new StudioError(
         "draft_schema_invalid",
@@ -309,10 +312,60 @@ export class StudioDrafts {
         `课程标识（dlc_id）不能修改：清单声明 ${manifest.dlc_id}，草稿是 ${draft.manifest.dlc_id}`,
       );
     }
+    // 专家模式原子一致（T-036）：训练模式定义与 manifest 扩展必须双向一致。
+    // 编辑清单不得静默删除或改动已保存训练模式绑定的扩展；移除走专用操作。
+    const ext = (manifest.extensions as Record<string, unknown> | undefined)?.[
+      TRAINING_MODES_EXTENSION_KEY
+    ] as
+      | { schema_id?: unknown; payload_ref?: { sha256?: string } }
+      | undefined;
+    if (draft.training_modes_json !== undefined) {
+      const expectedHash = sha256Hex(draft.training_modes_json);
+      if (
+        !ext ||
+        ext.schema_id !== TRAINING_MODES_EXTENSION_KEY ||
+        ext.payload_ref?.sha256 !== expectedHash
+      ) {
+        throw new StudioError(
+          "draft_schema_invalid",
+          "课程清单与已保存的训练模式定义不一致（训练模式扩展缺失或被改动）。如需修改训练模式请用训练模式编辑器，如需移除请用“移除训练模式”操作",
+        );
+      }
+    } else if (ext) {
+      throw new StudioError(
+        "draft_schema_invalid",
+        "课程清单新增了训练模式扩展，但草稿没有对应的训练模式定义。请用训练模式编辑器提交定义",
+      );
+    }
     this.#assertCompilable(draft, manifest, draft.training_modes_json);
     const updated: StudioDraft = {
       ...draft,
       manifest,
+      expert_edited: true,
+      status: "structured",
+      updated_at: this.#clock(),
+    };
+    this.#drafts.set(draftId, updated);
+    return updated;
+  }
+
+  /** 专家模式：移除训练模式定义并同步移除 manifest 扩展（§6.6，T-036）。 */
+  removeTrainingModes(creatorId: string, draftId: string): StudioDraft {
+    const draft = this.#requireEditable(creatorId, draftId);
+    if (draft.training_modes_json === undefined) {
+      throw new StudioError("draft_state_invalid", "这份草稿没有训练模式定义，无需移除");
+    }
+    const manifest = structuredClone(draft.manifest);
+    if (manifest.extensions) {
+      const next: Record<string, unknown> = { ...manifest.extensions };
+      delete next[TRAINING_MODES_EXTENSION_KEY];
+      manifest.extensions = next as DLCManifest["extensions"];
+    }
+    this.#assertCompilable(draft, manifest, undefined);
+    const updated: StudioDraft = {
+      ...draft,
+      manifest,
+      training_modes_json: undefined,
       expert_edited: true,
       status: "structured",
       updated_at: this.#clock(),

@@ -45,6 +45,20 @@ import type {
   WorkbenchSection,
   WorkbenchView,
 } from "./types.js";
+import { parseTrainingModes } from "@llos/compiler/training-modes-parse";
+
+/**
+ * base64 → UTF-8 文本解码（浏览器安全；T-036 之前用 Node 的 Buffer，浏览器侧不可用）。
+ * Mock 层模拟"确定性 OCR"：把 base64 解码为文本，真实图片 OCR 走 provider-backed 传输。
+ */
+function base64ToUtf8(base64: string): string {
+  const binary = typeof atob === "function" ? atob(base64) : "";
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder("utf-8").decode(bytes);
+}
 
 const BASE_CAPABILITIES: readonly CapabilityId[] = [
   "chat",
@@ -983,6 +997,11 @@ export class MockApiClient implements ApiClient {
     );
   }
 
+  listByokProviderFamilies(): Promise<readonly string[]> {
+    // T-036：品牌家族清单模拟服务端从 Gateway 的 BYOK adapter 注册表派生，页面不硬编码。
+    return Promise.resolve(Object.freeze(["deepseek", "openai", "gemini"]));
+  }
+
   registerByokKey(providerFamily: string, label: string, key: string): Promise<RegisterByokOutcome> {
     const trimmed = key.trim();
     if (trimmed.length < 12) {
@@ -1038,7 +1057,7 @@ export class MockApiClient implements ApiClient {
     if (input.image !== undefined) {
       let decoded = "";
       try {
-        decoded = Buffer.from(input.image.base64, "base64").toString("utf8");
+        decoded = base64ToUtf8(input.image.base64);
       } catch {
         decoded = "";
       }
@@ -1363,39 +1382,6 @@ export class MockApiClient implements ApiClient {
     return { ok: true, draft };
   }
 
-  /** 训练模式定义守卫（Mock 复刻 parseTrainingModes 核心规则，教学化错误）。 */
-  #validateTrainingModes(payload: unknown): string | null {
-    if (typeof payload !== "object" || payload === null) return "训练模式定义不是有效对象";
-    const modes = (payload as { modes?: unknown }).modes;
-    if (!Array.isArray(modes) || modes.length === 0 || modes.length > 20) {
-      return "训练模式列表必须包含 1–20 个模式";
-    }
-    for (const [i, raw] of modes.entries()) {
-      if (typeof raw !== "object" || raw === null) return `第 ${i + 1} 个训练模式不是有效对象`;
-      const m = raw as { mode_ref?: unknown; claim_suffix?: unknown; steps?: unknown };
-      if (typeof m.mode_ref !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(m.mode_ref)) {
-        return `第 ${i + 1} 个训练模式的名称（mode_ref）无效`;
-      }
-      if (typeof m.claim_suffix !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(m.claim_suffix)) {
-        return `训练模式 ${m.mode_ref} 缺少有效的教学主张标识（claim_suffix）`;
-      }
-      const steps = m.steps;
-      if (!Array.isArray(steps) || steps.length < 3 || steps.length > 10) {
-        return `训练模式 ${m.mode_ref} 的步骤序列必须包含 3–10 步`;
-      }
-      const kinds = steps.map((s) => (typeof s === "object" && s !== null ? (s as { primitive?: unknown }).primitive : undefined));
-      if (kinds[0] !== "present") return `训练模式 ${m.mode_ref} 的第一步必须是向学员展示内容（present）`;
-      if (kinds[kinds.length - 1] !== "schedule") return `训练模式 ${m.mode_ref} 的最后一步必须是安排复习（schedule）`;
-      const captures = kinds.filter((k) => k === "capture_text" || k === "capture_audio" || k === "capture_choice");
-      if (captures.length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个学员作答步骤`;
-      const capIdx = kinds.indexOf(captures[0]);
-      if (kinds[capIdx + 1] !== "evaluate") return `训练模式 ${m.mode_ref} 的作答步骤之后必须紧跟评估（evaluate）`;
-      if (kinds.filter((k) => k === "evaluate").length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个评估步骤`;
-      if (kinds.filter((k) => k === "feedback").length !== 1) return `训练模式 ${m.mode_ref} 必须恰好包含一个反馈步骤`;
-    }
-    return null;
-  }
-
   editTrainingModes(draftId: string, modesJson: string): Promise<ExpertEditStudioOutcome> {
     const editable = this.#expertEditable(draftId);
     if (!editable.ok) return Promise.resolve(editable.outcome);
@@ -1409,19 +1395,27 @@ export class MockApiClient implements ApiClient {
         message: "训练模式定义不是有效的 JSON，请检查括号、引号与逗号",
       });
     }
-    const invalid = this.#validateTrainingModes(payload);
-    if (invalid) {
+    // T-036：单一解析入口——复用编译器 parseTrainingModes（浏览器安全子路径），
+    // 不再在 Mock 内复刻一套守卫（审计第 8 条：消除 compiler 与 Mock 各维护一套规则）。
+    try {
+      parseTrainingModes(payload);
+    } catch (err) {
+      const detail =
+        err instanceof Error
+          ? err.message.replace(/^\[[^\]]+\]\s*[^:]*:\s*/, "")
+          : "请检查内容";
       return Promise.resolve({
         status: "invalid_content",
-        message: `训练模式定义无法使用：${invalid}`,
+        message: `训练模式定义无法使用：${detail}`,
       });
     }
-    // claim 必须由清单声明（Mock 对齐 buildManifestDraft 的三 claims 后缀）。
-    const declared = new Set([
-      "checkin_dialogue",
-      "verb_valence_dative",
-      "polite_request_construction",
-    ]);
+    // claim 必须由清单声明（对齐编译器 manifest_reference_broken 守卫，而非硬编码后缀）。
+    const declared = new Set(
+      draft.manifest.claims.map((c) => {
+        const idx = c.claim_ref.lastIndexOf(":claim/");
+        return idx >= 0 ? c.claim_ref.slice(idx + ":claim/".length) : "";
+      }),
+    );
     const parsedModes = (payload as { modes: { mode_ref: string; claim_suffix: string }[] }).modes;
     for (const raw of parsedModes) {
       if (!declared.has(raw.claim_suffix)) {
